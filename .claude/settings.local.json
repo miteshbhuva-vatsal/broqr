@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter devices *)",
+      "Bash(export PATH=\"$PATH:/Users/miteshpatel/Library/Android/sdk/platform-tools\")",
+      "Bash(adb -s emulator-5554 install -r /Users/miteshpatel/CPAPP/build/app/outputs/flutter-apk/app-debug.apk)",
+      "Bash(adb -s emulator-5554 shell monkey -p com.digiprop.cpapp -c android.intent.category.LAUNCHER 1)",
+      "Bash(/Users/miteshpatel/.local/node_modules/.bin/firebase deploy *)"
+    ]
+  }
+}

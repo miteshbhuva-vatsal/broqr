@@ -1,0 +1,125 @@
+name: cpapp
+description: Stressed Property Listing Platform — broker deal-sharing and networking app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State Management ──────────────────────────────────────────────────────
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # ── Navigation ───────────────────────────────────────────────────────────
+  go_router: ^14.3.0
+
+  # ── Firebase ─────────────────────────────────────────────────────────────
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.5.0
+  firebase_storage: ^12.3.6
+  firebase_messaging: ^15.1.5
+  firebase_analytics: ^11.3.5
+  firebase_app_check: ^0.3.2
+
+  # ── Social Auth ───────────────────────────────────────────────────────────
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^7.1.1
+
+  # ── Networking ────────────────────────────────────────────────────────────
+  dio: ^5.7.0
+  connectivity_plus: ^6.1.0
+  xml: ^6.5.0
+
+  # ── UI ────────────────────────────────────────────────────────────────────
+  flutter_screenutil: ^5.9.3
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  flutter_svg: ^2.0.10+1
+  lottie: ^3.1.3
+  gap: ^3.0.1
+  badges: ^3.1.2
+  smooth_page_indicator: ^1.2.0+3
+  flutter_staggered_grid_view: ^0.7.0
+  photo_view: ^0.15.0
+
+  # ── Image & Media ─────────────────────────────────────────────────────────
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
+  permission_handler: ^11.3.1
+  path_provider: ^2.1.5
+
+  # ── Storage & Persistence ─────────────────────────────────────────────────
+  shared_preferences: ^2.3.3
+
+  # ── Sharing ───────────────────────────────────────────────────────────────
+  share_plus: ^10.0.2
+
+  # ── PDF ──────────────────────────────────────────────────────────────────
+  pdf: ^3.11.1
+  printing: ^5.13.2
+
+  # ── Data / Models ─────────────────────────────────────────────────────────
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  equatable: ^2.0.5
+  dartz: ^0.10.1
+  uuid: ^4.5.1
+  intl: ^0.19.0
+
+  # ── URL Launcher ──────────────────────────────────────────────────────────
+  url_launcher: ^6.3.1
+  webview_flutter: ^4.10.0
+
+  # ── Deep Links ───────────────────────────────────────────────────────────
+  app_links: ^6.3.4
+
+  # ── Misc ─────────────────────────────────────────────────────────────────
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  # ── Code Generation ───────────────────────────────────────────────────────
+  riverpod_generator: ^2.6.2
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  custom_lint: ^0.7.0
+  riverpod_lint: ^2.6.2
+
+  # ── Assets ───────────────────────────────────────────────────────────────
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/animations/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#0A1628"
+  image: assets/images/splash_logo.png
+  color_dark: "#0A1628"
+  image_dark: assets/images/splash_logo.png
+  android_12:
+    color: "#0A1628"
+    image: assets/images/splash_logo.png
