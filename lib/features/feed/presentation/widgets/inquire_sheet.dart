@@ -112,7 +112,7 @@ class InquireSheet extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        listing.category.label,
+                        listing.category.localizedLabel(Localizations.localeOf(context).languageCode),
                         style: AppTypography.labelSmall.copyWith(
                           color: listing.category.color,
                           fontWeight: FontWeight.w600,

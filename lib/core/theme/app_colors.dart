@@ -37,13 +37,14 @@ abstract final class AppColors {
   static const Color infoLight = Color(0xFFDBEAFE);
 
   // ── Category badge colours ────────────────────────────────────────────────
-  static const Color barter = Color(0xFFEA580C);     // orange
-  static const Color project = Color(0xFF2563EB);    // blue
-  static const Color investor = Color(0xFF16A34A);   // green
-  static const Color discount = Color(0xFF9333EA);   // purple
-  static const Color rental = Color(0xFF0891B2);     // cyan
-  static const Color commercial = Color(0xFF854D0E); // brown
-  static const Color urgentSale = Color(0xFFDC2626); // red
+  static const Color catBarterDeal      = Color(0xFFEA580C); // orange
+  static const Color catBankAuction     = Color(0xFF4F46E5); // indigo
+  static const Color catBigDiscount     = Color(0xFF9333EA); // purple
+  static const Color catPreLeased       = Color(0xFF0891B2); // cyan
+  static const Color catPreLaunched     = Color(0xFF2563EB); // blue
+  static const Color catPreOwned        = Color(0xFFD97706); // amber
+  static const Color catBestRoi         = Color(0xFF16A34A); // green
+  static const Color catProjectSpecific = Color(0xFF0F766E); // teal
 
   // ── Divider / border ──────────────────────────────────────────────────────
   static const Color border = Color(0xFFE2E8F0);

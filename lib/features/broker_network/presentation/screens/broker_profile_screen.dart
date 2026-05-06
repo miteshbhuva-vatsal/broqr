@@ -674,7 +674,7 @@ class _CategoryChip extends StatelessWidget {
           Text(category.emoji, style: const TextStyle(fontSize: 13)),
           const SizedBox(width: 6),
           Text(
-            category.label,
+            category.localizedLabel(Localizations.localeOf(context).languageCode),
             style: TextStyle(
               color: category.color,
               fontSize: 12,
@@ -756,7 +756,7 @@ class _ListingTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${listing.category.emoji} ${listing.category.label}',
+                      '${listing.category.emoji} ${listing.category.localizedLabel(Localizations.localeOf(context).languageCode)}',
                       style: TextStyle(
                         color: listing.category.color,
                         fontSize: 10,

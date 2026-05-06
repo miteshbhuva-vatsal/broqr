@@ -137,7 +137,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                         style: const TextStyle(fontSize: 13),),
                     const SizedBox(width: 5),
                     Text(
-                      widget.category.label,
+                      widget.category.localizedLabel(Localizations.localeOf(context).languageCode),
                       style: AppTypography.labelSmall.copyWith(
                         color: widget.category.color,
                         fontWeight: FontWeight.w700,

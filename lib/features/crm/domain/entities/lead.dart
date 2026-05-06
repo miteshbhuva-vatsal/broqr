@@ -45,7 +45,7 @@ enum LeadStage {
         LeadStage.newLead => AppColors.info,
         LeadStage.contacted => AppColors.warning,
         LeadStage.viewing => AppColors.gold,
-        LeadStage.negotiating => AppColors.investor,
+        LeadStage.negotiating => AppColors.catBestRoi,
         LeadStage.closed => AppColors.success,
         LeadStage.lost => AppColors.error,
       };

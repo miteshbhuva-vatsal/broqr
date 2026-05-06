@@ -195,7 +195,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     _StepPage(
                       child: StepPropertyDetails(
                         formKey: _detailsFormKey,
-                        category: formState.category ?? ListingCategory.barter,
+                        category: formState.category ?? ListingCategory.barterDeal,
                         propertyType: formState.propertyType,
                         title: formState.title,
                         city: formState.city,
@@ -247,7 +247,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     _StepPage(
                       child: StepPosterCreator(
                         posterKey: _posterKey,
-                        category: formState.category ?? ListingCategory.barter,
+                        category: formState.category ?? ListingCategory.barterDeal,
                         location: formState.location,
                         city: formState.city,
                         price: formState.price,

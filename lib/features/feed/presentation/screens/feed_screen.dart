@@ -669,7 +669,7 @@ class _FeedFilterSheetState extends State<_FeedFilterSheet> {
                     ),
                     child: Center(
                       child: Text(
-                        '${cat.emoji} ${cat.label.replaceAll(' Deal', '')}',
+                        '${cat.emoji} ${cat.localizedLabel(Localizations.localeOf(context).languageCode)}',
                         style: AppTypography.labelSmall.copyWith(
                           color: sel ? cat.color : AppColors.textSecondary,
                           fontWeight:

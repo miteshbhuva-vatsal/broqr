@@ -487,7 +487,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                         color: listing.category.color,
                         bgColor: listing.category.bgColor,
                         label:
-                            '${listing.category.emoji}  ${listing.category.label}',
+                            '${listing.category.emoji}  ${listing.category.localizedLabel(Localizations.localeOf(context).languageCode)}',
                       ),
                       if (listing.propertyType != null)
                         _Badge(

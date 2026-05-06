@@ -647,7 +647,7 @@ class _CategoryBadge extends StatelessWidget {
         ),
       ),
       child: Text(
-        listing.category.label,
+        listing.category.localizedLabel(Localizations.localeOf(context).languageCode),
         style: AppTypography.labelSmall.copyWith(
           color: AppColors.gold,
           fontWeight: FontWeight.w700,

@@ -612,7 +612,7 @@ class _ProfileListingTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${listing.category.emoji} ${listing.category.label}',
+                      '${listing.category.emoji} ${listing.category.localizedLabel(Localizations.localeOf(context).languageCode)}',
                       style: TextStyle(
                         color: listing.category.color,
                         fontSize: 10,

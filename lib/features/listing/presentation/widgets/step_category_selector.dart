@@ -114,7 +114,7 @@ class _CategoryTile extends StatelessWidget {
               ],
             ),
             Text(
-              category.label,
+              category.localizedLabel(Localizations.localeOf(context).languageCode),
               style: AppTypography.titleSmall.copyWith(
                 color: isSelected
                     ? category.color

@@ -38,7 +38,7 @@ class CategoryFilterBar extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _Chip(
-                label: cat.label.replaceAll(' Deal', '').replaceAll(' Sale', ''),
+                label: cat.localizedLabel(Localizations.localeOf(context).languageCode),
                 emoji: cat.emoji,
                 isSelected: selected == cat,
                 selectedColor: cat.color,
