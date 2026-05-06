@@ -59,7 +59,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ uid:
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 truncate">{user.name as string}</h1>
-              {user.isVerified && (
+              {!!user.isVerified && (
                 <CheckCircle size={18} className="text-blue-500 shrink-0" />
               )}
             </div>
