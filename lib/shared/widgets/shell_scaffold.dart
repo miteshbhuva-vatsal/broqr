@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
@@ -13,12 +14,12 @@ class ShellScaffold extends ConsumerWidget {
 
   final Widget child;
 
-  static const _tabs = [
-    _TabItem(icon: Icons.home_outlined,       activeIcon: Icons.home,            label: 'Feed',      path: Routes.feed),
-    _TabItem(icon: Icons.newspaper_outlined,  activeIcon: Icons.newspaper,       label: 'News',      path: Routes.news),
-    _TabItem(icon: Icons.add_circle_outline,  activeIcon: Icons.add_circle,      label: 'Post',      path: Routes.addListing),
-    _TabItem(icon: Icons.alarm_outlined,      activeIcon: Icons.alarm,           label: 'Reminders', path: Routes.reminders),
-    _TabItem(icon: Icons.assignment_outlined, activeIcon: Icons.assignment,      label: 'CRM',       path: Routes.crm),
+  static List<_TabItem> _tabs(AppLocalizations l) => [
+    _TabItem(icon: Icons.home_outlined,       activeIcon: Icons.home,            label: l.navFeed,      path: Routes.feed),
+    _TabItem(icon: Icons.newspaper_outlined,  activeIcon: Icons.newspaper,       label: l.navNews,      path: Routes.news),
+    _TabItem(icon: Icons.add_circle_outline,  activeIcon: Icons.add_circle,      label: l.navPost,      path: Routes.addListing),
+    _TabItem(icon: Icons.alarm_outlined,      activeIcon: Icons.alarm,           label: l.navReminders, path: Routes.reminders),
+    _TabItem(icon: Icons.assignment_outlined, activeIcon: Icons.assignment,      label: l.navCrm,       path: Routes.crm),
   ];
 
   int _selectedIndex(BuildContext context) {
@@ -35,6 +36,7 @@ class ShellScaffold extends ConsumerWidget {
     final isDark   = Theme.of(context).brightness == Brightness.dark;
     final current  = _selectedIndex(context);
     final urgent   = ref.watch(urgentReminderCountProvider);
+    final tabs     = _tabs(AppLocalizations.of(context));
 
     return Scaffold(
       body: child,
@@ -52,8 +54,8 @@ class ShellScaffold extends ConsumerWidget {
           child: SizedBox(
             height: 60,
             child: Row(
-              children: List.generate(_tabs.length, (i) {
-                final tab        = _tabs[i];
+              children: List.generate(tabs.length, (i) {
+                final tab        = tabs[i];
                 final isSelected = i == current;
 
                 // Index 2 → centre gold "+" post button

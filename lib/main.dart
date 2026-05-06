@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:cpapp/core/l10n/app_localizations.dart';
+import 'package:cpapp/core/l10n/locale_provider.dart';
 import 'package:cpapp/core/router/app_router.dart';
 import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/core/services/fcm_service.dart';
@@ -78,6 +81,7 @@ class CPApp extends ConsumerWidget {
     });
 
     final router = ref.watch(appRouterProvider);
+    final locale = ref.watch(localeProvider);
 
     // Forward every incoming deep link to the handler.
     ref.listen(deepLinkUriProvider, (_, next) {
@@ -94,6 +98,16 @@ class CPApp extends ConsumerWidget {
         return MaterialApp.router(
           title: 'CPApp',
           debugShowCheckedModeBanner: false,
+
+          // Localisation
+          locale: locale,
+          supportedLocales: supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
 
           // Theme
           theme: AppTheme.light,

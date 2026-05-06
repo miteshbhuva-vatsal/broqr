@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,8 +15,12 @@ import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/crm/presentation/widgets/listing_leads_sheet.dart';
 import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/features/feed/presentation/providers/feed_providers.dart';
-import 'package:cpapp/features/feed/presentation/widgets/inquire_sheet.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
+import 'package:cpapp/shared/widgets/phone_otp_sheet.dart';
+
+// ignore: unused_import — kept for InquireSheet used in listing_detail_screen
+// import 'package:cpapp/features/feed/presentation/widgets/inquire_sheet.dart';
 
 class FeedCard extends ConsumerStatefulWidget {
   const FeedCard({super.key, required this.listing});
@@ -28,6 +33,7 @@ class FeedCard extends ConsumerStatefulWidget {
 
 class _FeedCardState extends ConsumerState<FeedCard> {
   Timer? _viewTimer;
+  bool _phoneRevealed = false;
 
   @override
   void initState() {
@@ -76,18 +82,68 @@ class _FeedCardState extends ConsumerState<FeedCard> {
     }
   }
 
-  void _inquire() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => InquireSheet(listing: widget.listing),
-    );
+  Future<void> _onContactTap() async {
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    if (user == null) return;
+
+    final isVerified = ref.read(isPhoneVerifiedProvider);
+    if (isVerified) {
+      await _doContact();
+    } else {
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => PhoneOtpSheet(
+          initialPhone: user.mobile,
+          onVerified: () => Future.microtask(_doContact),
+        ),
+      );
+    }
+  }
+
+  Future<void> _doContact() async {
+    final listing = widget.listing;
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    if (user == null) return;
+
+    // Auto-add a lead in the broker's CRM representing this inquiry
+    try {
+      await FirebaseFirestore.instance.collection('leads').add({
+        'ownerUid': listing.brokerUid,
+        'clientName': user.name,
+        'clientPhone': user.mobile ?? '',
+        'stage': 'newLead',
+        'priority': 'medium',
+        'linkedListingId': listing.id,
+        'linkedListingCity': listing.city,
+        'linkedListingPrice': listing.priceLabel,
+        'notes': <Map<String, dynamic>>[],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Don't block phone reveal if lead creation fails
+    }
+
+    if (mounted) {
+      setState(() => _phoneRevealed = true);
+      if (listing.brokerPhone == null || listing.brokerPhone!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Broker hasn't added a contact number yet"),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
     final listing = widget.listing;
     // select() means this card only rebuilds when ITS liked state changes,
     // not when any other listing in the feed changes.
@@ -406,7 +462,7 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Brokerage',
+                      l.brokerage,
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -479,25 +535,53 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                     onTap: _share,
                   ),
                   const SizedBox(width: 6),
-                  // Inquire CTA — gold gradient pill
+                  // Contact Lead Owner CTA
                   GestureDetector(
-                    onTap: _inquire,
-                    child: Container(
+                    onTap: _phoneRevealed ? null : _onContactTap,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
+                        horizontal: 12,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        gradient: AppColors.goldGradient,
+                        color: _phoneRevealed
+                            ? AppColors.success.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: _phoneRevealed
+                              ? AppColors.success
+                              : AppColors.gold,
+                          width: 1.2,
+                        ),
                         borderRadius: BorderRadius.circular(22),
                       ),
-                      child: Text(
-                        'Inquire →',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.navyDark,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.phone_outlined,
+                            size: 13,
+                            color: _phoneRevealed
+                                ? AppColors.success
+                                : AppColors.gold,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _phoneRevealed
+                                ? (listing.brokerPhone?.isNotEmpty == true
+                                    ? '+91 ${listing.brokerPhone}'
+                                    : 'No number')
+                                : l.inquiry,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: _phoneRevealed
+                                  ? AppColors.success
+                                  : AppColors.gold,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -616,45 +700,20 @@ class _FollowButton extends ConsumerWidget {
       networkProvider.select((s) => s.statusFor(brokerUid)),
     );
 
-    return switch (status) {
-      ConnectionStatus.connected => _chip(
-          label: 'Following',
-          icon: Icons.check_rounded,
-          color: AppColors.success,
-          onTap: null,
-        ),
-      ConnectionStatus.pendingSent => _chip(
-          label: 'Requested',
-          icon: Icons.hourglass_top_rounded,
-          color: AppColors.textHint,
-          onTap: null,
-        ),
-      ConnectionStatus.pendingReceived => _chip(
-          label: 'Accept',
-          icon: Icons.person_add_rounded,
-          color: AppColors.gold,
-          onTap: () {
-            final conn = ref
-                .read(networkProvider)
-                .connections
-                .where((c) => c.otherUid(myUid) == brokerUid)
-                .firstOrNull;
-            if (conn != null) {
-              ref
-                  .read(networkProvider.notifier)
-                  .acceptConnection(conn.id, brokerUid);
-            }
-          },
-        ),
-      ConnectionStatus.none => _chip(
-          label: 'Follow',
-          icon: Icons.person_add_alt_1_rounded,
-          color: AppColors.gold,
-          onTap: () => ref
-              .read(networkProvider.notifier)
-              .sendConnectionRequest(brokerUid),
-        ),
-    };
+    if (status == ConnectionStatus.following) {
+      return _chip(
+        label: 'Following',
+        icon: Icons.check_rounded,
+        color: AppColors.success,
+        onTap: null,
+      );
+    }
+    return _chip(
+      label: 'Follow',
+      icon: Icons.person_add_alt_1_rounded,
+      color: AppColors.gold,
+      onTap: () => ref.read(networkProvider.notifier).follow(brokerUid),
+    );
   }
 
   Widget _chip({

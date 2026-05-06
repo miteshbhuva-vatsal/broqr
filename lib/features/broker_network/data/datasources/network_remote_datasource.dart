@@ -17,18 +17,15 @@ abstract interface class NetworkRemoteDataSource {
 
   Future<List<Connection>> fetchConnections(String uid);
 
-  Future<Connection> sendConnectionRequest({
-    required String senderUid,
-    required String receiverUid,
+  Future<Connection> follow({
+    required String followerUid,
+    required String followingUid,
   });
 
-  Future<Connection> acceptConnection(String connectionId);
-
-  Future<void> removeConnection({
+  Future<void> unfollow({
     required String connectionId,
     required String uid1,
     required String uid2,
-    required bool wasConnected,
   });
 }
 
@@ -54,7 +51,7 @@ class NetworkRemoteDataSourceImpl implements NetworkRemoteDataSource {
       Query<Map<String, dynamic>> query = _users
           .where('isProfileComplete', isEqualTo: true)
           .orderBy('createdAt', descending: true)
-          .limit(limit + 1); // +1 to check hasMore
+          .limit(limit + 1);
 
       if (lastUid != null) {
         final lastDoc = await _users.doc(lastUid).get();
@@ -85,96 +82,80 @@ class NetworkRemoteDataSourceImpl implements NetworkRemoteDataSource {
   @override
   Future<List<Connection>> fetchConnections(String uid) async {
     try {
-      final snap = await _connections
-          .where('participants', arrayContains: uid)
+      // Fetch both directions: people this user follows and people following them
+      final asFollower = _connections
+          .where('followerId', isEqualTo: uid)
           .get();
-      return snap.docs
-          .map((d) => ConnectionModel.fromFirestore(d))
-          .toList();
+      final asFollowing = _connections
+          .where('followingId', isEqualTo: uid)
+          .get();
+      final results = await Future.wait([asFollower, asFollowing]);
+      final seen = <String>{};
+      final connections = <Connection>[];
+      for (final snap in results) {
+        for (final doc in snap.docs) {
+          if (seen.add(doc.id)) {
+            connections.add(ConnectionModel.fromFirestore(doc));
+          }
+        }
+      }
+      return connections;
     } catch (e) {
       throw ServerException('Failed to fetch connections: $e');
     }
   }
 
   @override
-  Future<Connection> sendConnectionRequest({
-    required String senderUid,
-    required String receiverUid,
+  Future<Connection> follow({
+    required String followerUid,
+    required String followingUid,
   }) async {
     try {
-      final id = Connection.idFor(senderUid, receiverUid);
+      final id = Connection.idFor(followerUid, followingUid);
       final now = DateTime.now();
       final model = ConnectionModel(
         id: id,
-        senderId: senderUid,
-        participants: [senderUid, receiverUid],
-        status: 'pending',
+        followerId: followerUid,
+        followingId: followingUid,
         createdAt: now,
       );
-      await _connections.doc(id).set(model.toMap());
+      final batch = _db.batch();
+      batch.set(_connections.doc(id), model.toMap());
+      batch.update(
+        _users.doc(followerUid),
+        {'connectionsCount': FieldValue.increment(1)},
+      );
+      batch.update(
+        _users.doc(followingUid),
+        {'connectionsCount': FieldValue.increment(1)},
+      );
+      await batch.commit();
       return model;
     } catch (e) {
-      throw ServerException('Failed to send connection request: $e');
+      throw ServerException('Failed to follow: $e');
     }
   }
 
   @override
-  Future<Connection> acceptConnection(String connectionId) async {
-    try {
-      // Read current doc to get participant UIDs
-      final doc = await _connections.doc(connectionId).get();
-      if (!doc.exists) throw const ServerException('Connection not found');
-      final current = ConnectionModel.fromFirestore(doc);
-
-      // Batch: update status + increment both users' connectionsCount
-      final batch = _db.batch();
-      batch.update(
-        _connections.doc(connectionId),
-        {'status': 'connected'},
-      );
-      for (final uid in current.participants) {
-        batch.update(
-          _users.doc(uid),
-          {'connectionsCount': FieldValue.increment(1)},
-        );
-      }
-      await batch.commit();
-
-      return ConnectionModel(
-        id: current.id,
-        senderId: current.senderId,
-        participants: current.participants,
-        status: 'connected',
-        createdAt: current.createdAt,
-      );
-    } catch (e) {
-      throw ServerException('Failed to accept connection: $e');
-    }
-  }
-
-  @override
-  Future<void> removeConnection({
+  Future<void> unfollow({
     required String connectionId,
     required String uid1,
     required String uid2,
-    required bool wasConnected,
   }) async {
     try {
       final batch = _db.batch();
       batch.delete(_connections.doc(connectionId));
-      if (wasConnected) {
-        batch.update(
-          _users.doc(uid1),
-          {'connectionsCount': FieldValue.increment(-1)},
-        );
-        batch.update(
-          _users.doc(uid2),
-          {'connectionsCount': FieldValue.increment(-1)},
-        );
-      }
+      batch.update(
+        _users.doc(uid1),
+        {'connectionsCount': FieldValue.increment(-1)},
+      );
+      batch.update(
+        _users.doc(uid2),
+        {'connectionsCount': FieldValue.increment(-1)},
+      );
       await batch.commit();
     } catch (e) {
-      throw ServerException('Failed to remove connection: $e');
+      throw ServerException('Failed to unfollow: $e');
     }
   }
 }

@@ -50,6 +50,41 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Future<Either<Failure, AppUser>> updateProfile({
+    required String uid,
+    required String name,
+    required String mobile,
+    required String city,
+    UserRole? role,
+    String? reraNumber,
+    File? photoFile,
+  }) async {
+    try {
+      String? photoUrl;
+      if (photoFile != null) {
+        photoUrl = await _ds.uploadProfilePhoto(uid: uid, file: photoFile);
+      }
+
+      final user = await _ds.updateProfile(
+        uid: uid,
+        name: name,
+        mobile: mobile,
+        city: city,
+        role: role,
+        reraNumber: reraNumber,
+        photoUrl: photoUrl,
+      );
+      return Right(user);
+    } on StorageException catch (e) {
+      return Left(StorageFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, String>> uploadProfilePhoto({
     required String uid,
     required File file,
@@ -71,6 +106,28 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return Right(user);
     } on NotFoundException catch (e) {
       return Left(NotFoundFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> submitVerificationRequest({
+    required String uid,
+    required String name,
+    String? reraNumber,
+    String? mobile,
+  }) async {
+    try {
+      await _ds.submitVerificationRequest(
+        uid: uid,
+        name: name,
+        reraNumber: reraNumber,
+        mobile: mobile,
+      );
+      return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

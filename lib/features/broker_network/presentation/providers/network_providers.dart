@@ -113,7 +113,6 @@ class Network extends _$Network {
       return;
     }
 
-    // Fetch brokers and connections in parallel
     final brokersFuture = _repo.fetchBrokers(
       currentUid: uid,
       limit: _pageSize,
@@ -173,29 +172,26 @@ class Network extends _$Network {
     );
   }
 
-  void setTab(NetworkTab tab) {
-    state = state.copyWith(tab: tab);
-  }
+  void setTab(NetworkTab tab) => state = state.copyWith(tab: tab);
 
-  Future<void> sendConnectionRequest(String receiverUid) async {
+  Future<void> follow(String targetUid) async {
     final uid = _myUid;
     if (uid.isEmpty) return;
 
-    // Optimistic: mark as pending sent
+    // Optimistic update
     final tempMap = Map<String, ConnectionStatus>.from(state.statusMap);
-    tempMap[receiverUid] = ConnectionStatus.pendingSent;
+    tempMap[targetUid] = ConnectionStatus.following;
     state = state.copyWith(statusMap: tempMap);
 
-    final result = await _repo.sendConnectionRequest(
-      senderUid: uid,
-      receiverUid: receiverUid,
+    final result = await _repo.follow(
+      followerUid: uid,
+      followingUid: targetUid,
     );
 
     result.fold(
       (failure) {
-        // Revert on failure
         final revertMap = Map<String, ConnectionStatus>.from(state.statusMap);
-        revertMap[receiverUid] = ConnectionStatus.none;
+        revertMap[targetUid] = ConnectionStatus.none;
         state = state.copyWith(statusMap: revertMap, error: failure.message);
       },
       (connection) {
@@ -205,14 +201,14 @@ class Network extends _$Network {
           statusMap: _buildStatusMap(updated, uid),
         );
 
-        // Fire-and-forget notification to receiver
+        // Notify the person being followed
         final myName =
             ref.read(authStateChangesProvider).valueOrNull?.name ?? 'A broker';
         _notifRepo.createNotification(
-          recipientUid: receiverUid,
-          type: NotificationType.connectionRequest,
-          title: 'New Connection Request',
-          body: '$myName wants to connect with you',
+          recipientUid: targetUid,
+          type: NotificationType.connectionAccepted,
+          title: 'New Follower',
+          body: '$myName started following you',
           actorUid: uid,
           targetId: connection.id,
         );
@@ -220,56 +216,14 @@ class Network extends _$Network {
     );
   }
 
-  Future<void> acceptConnection(String connectionId, String senderUid) async {
-    final uid = _myUid;
-    if (uid.isEmpty) return;
-
-    // Optimistic: mark as connected
-    final tempMap = Map<String, ConnectionStatus>.from(state.statusMap);
-    tempMap[senderUid] = ConnectionStatus.connected;
-    state = state.copyWith(statusMap: tempMap);
-
-    final result = await _repo.acceptConnection(connectionId);
-
-    result.fold(
-      (failure) {
-        final revertMap = Map<String, ConnectionStatus>.from(state.statusMap);
-        revertMap[senderUid] = ConnectionStatus.pendingReceived;
-        state = state.copyWith(statusMap: revertMap, error: failure.message);
-      },
-      (connection) {
-        final updated = state.connections
-            .map((c) => c.id == connectionId ? connection : c)
-            .toList();
-        state = state.copyWith(
-          connections: updated,
-          statusMap: _buildStatusMap(updated, uid),
-        );
-
-        // Fire-and-forget notification to the original sender
-        final myName =
-            ref.read(authStateChangesProvider).valueOrNull?.name ?? 'A broker';
-        _notifRepo.createNotification(
-          recipientUid: senderUid,
-          type: NotificationType.connectionAccepted,
-          title: 'Connection Accepted',
-          body: '$myName accepted your connection request',
-          actorUid: uid,
-          targetId: connectionId,
-        );
-      },
-    );
-  }
-
-  Future<void> removeConnection({
+  Future<void> unfollow({
     required String connectionId,
     required String otherUid,
-    required bool wasConnected,
   }) async {
     final uid = _myUid;
     if (uid.isEmpty) return;
 
-    // Optimistic: remove immediately
+    // Optimistic update
     final updatedConnections =
         state.connections.where((c) => c.id != connectionId).toList();
     final tempMap = Map<String, ConnectionStatus>.from(state.statusMap);
@@ -279,21 +233,20 @@ class Network extends _$Network {
       statusMap: tempMap,
     );
 
-    final result = await _repo.removeConnection(
+    final result = await _repo.unfollow(
       connectionId: connectionId,
       uid1: uid,
       uid2: otherUid,
-      wasConnected: wasConnected,
     );
 
     result.fold(
-      (failure) {
-        // Reload to reconcile state on failure
-        _load();
-      },
+      (failure) => _load(), // Reload to reconcile on failure
       (_) {},
     );
   }
+
+  // Keep for backward compat — delegates to follow()
+  Future<void> sendConnectionRequest(String receiverUid) => follow(receiverUid);
 
   void clearError() => state = state.copyWith(clearError: true);
 
@@ -304,7 +257,9 @@ class Network extends _$Network {
     final map = <String, ConnectionStatus>{};
     for (final c in connections) {
       final otherUid = c.otherUid(myUid);
-      map[otherUid] = c.statusFor(myUid);
+      if (otherUid.isNotEmpty) {
+        map[otherUid] = ConnectionStatus.following;
+      }
     }
     return map;
   }
@@ -312,8 +267,7 @@ class Network extends _$Network {
 
 // ── Derived providers ─────────────────────────────────────────────────────────
 
-/// Exposes the UIDs of all accepted connections for the current user.
-/// Used by the feed to filter listings to connected brokers only.
+/// UIDs of everyone the current user follows or is followed by.
 final connectedUidsProvider = Provider<List<String>>((ref) {
   final myUid =
       ref.watch(authStateChangesProvider).valueOrNull?.uid ?? '';
@@ -321,8 +275,8 @@ final connectedUidsProvider = Provider<List<String>>((ref) {
   return ref
       .watch(networkProvider)
       .connections
-      .where((c) => c.isConnected)
       .map((c) => c.otherUid(myUid))
+      .where((uid) => uid.isNotEmpty)
       .toList();
 });
 
@@ -336,26 +290,25 @@ final mutualConnectionsCountProvider =
   final myConnectedUids = ref
       .read(networkProvider)
       .connections
-      .where((c) => c.isConnected)
       .map((c) => c.otherUid(myUid))
       .where((uid) => uid.isNotEmpty)
       .toSet();
 
   if (myConnectedUids.isEmpty) return 0;
 
-  final snap = await FirebaseFirestore.instance
+  final followerSnap = await FirebaseFirestore.instance
       .collection('connections')
-      .where('participants', arrayContains: brokerId)
+      .where('followerId', isEqualTo: brokerId)
+      .get();
+  final followingSnap = await FirebaseFirestore.instance
+      .collection('connections')
+      .where('followingId', isEqualTo: brokerId)
       .get();
 
-  final brokerConnectedUids = snap.docs
-      .where((d) => d['status'] == 'connected')
-      .map((d) {
-        final parts = (d['participants'] as List<dynamic>).cast<String>();
-        return parts.firstWhere((p) => p != brokerId, orElse: () => '');
-      })
-      .where((uid) => uid.isNotEmpty && uid != myUid)
-      .toSet();
+  final brokerConnectedUids = {
+    ...followerSnap.docs.map((d) => d['followingId'] as String? ?? ''),
+    ...followingSnap.docs.map((d) => d['followerId'] as String? ?? ''),
+  }..removeAll(['', myUid, brokerId]);
 
   return myConnectedUids.intersection(brokerConnectedUids).length;
 });

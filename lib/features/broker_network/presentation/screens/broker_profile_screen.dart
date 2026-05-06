@@ -39,7 +39,7 @@ class BrokerProfileScreen extends ConsumerWidget {
 
     // Find the connection document id for this broker
     for (final c in networkState.connections) {
-      if (c.participants.contains(brokerId)) {
+      if (c.followerId == brokerId || c.followingId == brokerId) {
         connectionId = c.id;
         break;
       }
@@ -370,7 +370,7 @@ class _ProfileAppBar extends ConsumerWidget {
                               const SizedBox(width: 6),
                               const Icon(
                                 Icons.verified,
-                                color: _gold,
+                                color: Color(0xFF22C55E),
                                 size: 18,
                               ),
                             ],
@@ -453,7 +453,7 @@ class _LargeAvatar extends StatelessWidget {
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.verified, size: 16, color: _gold),
+              child: const Icon(Icons.verified, size: 16, color: Color(0xFF22C55E)),
             ),
           ),
       ],
@@ -476,63 +476,20 @@ class _ConnectButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    switch (status) {
-      case ConnectionStatus.none:
-        return _GoldButton(
-          label: 'Connect',
-          onTap: () => ref
-              .read(networkProvider.notifier)
-              .sendConnectionRequest(broker.uid),
-        );
-
-      case ConnectionStatus.pendingSent:
-        return const _GoldButton(label: 'Pending', onTap: null);
-
-      case ConnectionStatus.pendingReceived:
-        return _GoldButton(
-          label: 'Accept Request',
-          onTap: connectionId == null
-              ? null
-              : () => ref
-                  .read(networkProvider.notifier)
-                  .acceptConnection(connectionId!, broker.uid),
-        );
-
-      case ConnectionStatus.connected:
-        return _GoldButton(
-          label: 'Connected',
-          onTap: connectionId == null
-              ? null
-              : () => _confirmRemove(context, ref),
-        );
+    if (status == ConnectionStatus.following) {
+      return _GoldButton(
+        label: 'Following',
+        onTap: connectionId == null
+            ? null
+            : () => ref.read(networkProvider.notifier).unfollow(
+                  connectionId: connectionId!,
+                  otherUid: broker.uid,
+                ),
+      );
     }
-  }
-
-  void _confirmRemove(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Remove Connection'),
-        content: Text('Remove ${broker.name} from your connections?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(networkProvider.notifier).removeConnection(
-                    connectionId: connectionId!,
-                    otherUid: broker.uid,
-                    wasConnected: status == ConnectionStatus.connected,
-                  );
-            },
-            child:
-                const Text('Remove', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    return _GoldButton(
+      label: 'Follow',
+      onTap: () => ref.read(networkProvider.notifier).follow(broker.uid),
     );
   }
 }
@@ -590,7 +547,7 @@ class _StatsRow extends StatelessWidget {
           Expanded(
             child: _StatCell(
               value: broker.connectionsCount.toString(),
-              label: 'Network',
+              label: 'Followers',
             ),
           ),
           divider,

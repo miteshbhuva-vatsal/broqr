@@ -17,6 +17,7 @@ class AppUser extends Equatable {
     this.referralCode,
     this.isProfileComplete = false,
     this.isVerified = false,
+    this.isPhoneVerified = false,
     this.listingsCount = 0,
     this.connectionsCount = 0,
     this.lastSeen,
@@ -31,16 +32,15 @@ class AppUser extends Equatable {
   final String? reraNumber;
   final UserRole? role;
   /// Unique 8-char code used in referral deep links (e.g. "A1B2C3D4").
-  /// Generated once from the user's UID on first profile save.
   final String? referralCode;
   final bool isProfileComplete;
   final bool isVerified;
+  final bool isPhoneVerified;
   final int listingsCount;
   final int connectionsCount;
   final DateTime createdAt;
   final DateTime? lastSeen;
 
-  /// Returns the referral code, falling back to the first 8 chars of uid.
   String get effectiveReferralCode =>
       referralCode ?? uid.substring(0, 8).toUpperCase();
 
@@ -56,6 +56,7 @@ class AppUser extends Equatable {
     String? referralCode,
     bool? isProfileComplete,
     bool? isVerified,
+    bool? isPhoneVerified,
     int? listingsCount,
     int? connectionsCount,
     DateTime? lastSeen,
@@ -72,6 +73,7 @@ class AppUser extends Equatable {
       referralCode: referralCode ?? this.referralCode,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       isVerified: isVerified ?? this.isVerified,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
       listingsCount: listingsCount ?? this.listingsCount,
       connectionsCount: connectionsCount ?? this.connectionsCount,
       createdAt: createdAt,
@@ -92,6 +94,7 @@ class AppUser extends Equatable {
         referralCode,
         isProfileComplete,
         isVerified,
+        isPhoneVerified,
         listingsCount,
         connectionsCount,
         createdAt,

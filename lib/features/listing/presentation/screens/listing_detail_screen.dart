@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -12,14 +13,15 @@ import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/feed/presentation/providers/feed_providers.dart';
-import 'package:cpapp/features/feed/presentation/widgets/inquire_sheet.dart';
 import 'package:cpapp/features/listing/data/services/listing_pdf_service.dart';
+import 'package:cpapp/shared/widgets/phone_otp_sheet.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
 import 'package:cpapp/features/listing/presentation/providers/listing_providers.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
 import 'package:cpapp/features/crm/presentation/widgets/listing_leads_sheet.dart';
 import 'package:cpapp/features/crm/presentation/screens/lead_detail_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ListingDetailScreen extends ConsumerStatefulWidget {
   const ListingDetailScreen({super.key, required this.listingId});
@@ -34,6 +36,7 @@ class ListingDetailScreen extends ConsumerStatefulWidget {
 class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   int _currentImage = 0;
   bool _pdfLoading = false;
+  bool _phoneRevealed = false;
   final _shareKey = GlobalKey();
 
   Listing? _findListing() {
@@ -102,13 +105,55 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
     }
   }
 
-  void _inquire(Listing l) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => InquireSheet(listing: l),
-    );
+  Future<void> _onContactTap(Listing l) async {
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    if (user == null) return;
+    final isVerified = ref.read(isPhoneVerifiedProvider);
+    if (isVerified) {
+      await _doContact(l);
+    } else {
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => PhoneOtpSheet(
+          initialPhone: user.mobile,
+          onVerified: () => Future.microtask(() => _doContact(l)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _doContact(Listing l) async {
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    if (user == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('leads').add({
+        'ownerUid': l.brokerUid,
+        'clientName': user.name,
+        'clientPhone': user.mobile ?? '',
+        'stage': 'newLead',
+        'priority': 'medium',
+        'linkedListingId': l.id,
+        'linkedListingCity': l.city,
+        'linkedListingPrice': l.priceLabel,
+        'notes': <Map<String, dynamic>>[],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _phoneRevealed = true);
+      if (l.brokerPhone == null || l.brokerPhone!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Broker hasn't added a contact number yet"),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -461,7 +506,12 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                   ],
 
                   // Broker card — dark navy gradient
-                  _BrokerCard(listing: listing, isDark: isDark),
+                  _BrokerCard(
+                    listing: listing,
+                    isDark: isDark,
+                    phoneRevealed: _phoneRevealed,
+                    onContactTap: () => _onContactTap(listing),
+                  ),
 
                   // Brokerage strip (outside broker card)
                   if (listing.brokerageAmount != null &&
@@ -575,24 +625,50 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                     onTap: null,
                   ),
                   const SizedBox(width: 12),
-                  // Inquire CTA — full-height gold gradient button
+                  // Contact Lead Owner CTA
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => _inquire(listing),
-                      child: Container(
+                      onTap: _phoneRevealed ? null : () => _onContactTap(listing),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
                         height: 48,
                         decoration: BoxDecoration(
-                          gradient: AppColors.goldGradient,
+                          gradient: _phoneRevealed ? null : AppColors.goldGradient,
+                          color: _phoneRevealed
+                              ? AppColors.success.withValues(alpha: 0.12)
+                              : null,
+                          border: _phoneRevealed
+                              ? Border.all(color: AppColors.success, width: 1.5)
+                              : null,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         alignment: Alignment.center,
-                        child: Text(
-                          'Inquire Now',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: AppColors.navyDark,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.phone_outlined,
+                              size: 16,
+                              color: _phoneRevealed
+                                  ? AppColors.success
+                                  : AppColors.navyDark,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _phoneRevealed
+                                  ? (listing.brokerPhone?.isNotEmpty == true
+                                      ? '+91 ${listing.brokerPhone}'
+                                      : 'No number')
+                                  : 'Contact Lead Owner',
+                              style: AppTypography.labelMedium.copyWith(
+                                color: _phoneRevealed
+                                    ? AppColors.success
+                                    : AppColors.navyDark,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -821,13 +897,29 @@ class _Divider extends StatelessWidget {
 }
 
 class _BrokerCard extends StatelessWidget {
-  const _BrokerCard({required this.listing, required this.isDark});
+  const _BrokerCard({
+    required this.listing,
+    required this.isDark,
+    required this.phoneRevealed,
+    required this.onContactTap,
+  });
 
   final Listing listing;
   final bool isDark;
+  final bool phoneRevealed;
+  final VoidCallback onContactTap;
+
+  Future<void> _call() async {
+    final phone = listing.brokerPhone;
+    if (phone == null || phone.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: '+91$phone');
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final hasPhone = listing.brokerPhone != null && listing.brokerPhone!.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -847,10 +939,7 @@ class _BrokerCard extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.gold,
-                    width: 2,
-                  ),
+                  border: Border.all(color: AppColors.gold, width: 2),
                 ),
                 child: CircleAvatar(
                   radius: 24,
@@ -885,18 +974,14 @@ class _BrokerCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Role in gold small badge
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
+                          horizontal: 8, vertical: 2,),
                       decoration: BoxDecoration(
                         color: AppColors.gold.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: AppColors.gold.withValues(alpha: 0.4),
-                        ),
+                            color: AppColors.gold.withValues(alpha: 0.4),),
                       ),
                       child: Text(
                         'Verified Broker',
@@ -912,46 +997,114 @@ class _BrokerCard extends StatelessWidget {
               ),
             ],
           ),
-          // Phone row (if set)
-          if (listing.brokerPhone != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(
-                  Icons.phone_rounded,
-                  size: 14,
-                  color: AppColors.gold,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  listing.brokerPhone!,
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+
+          // ── Phone row — always shown, masked until revealed ──────────────
+          const SizedBox(height: 12),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: phoneRevealed
+                ? Row(
+                    key: const ValueKey('revealed'),
+                    children: [
+                      const Icon(Icons.phone_rounded,
+                          size: 14, color: AppColors.gold,),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasPhone
+                            ? '+91 ${listing.brokerPhone}'
+                            : 'No contact number',
+                        style: TextStyle(
+                          color: hasPhone
+                              ? AppColors.white
+                              : AppColors.textOnDarkSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    key: const ValueKey('masked'),
+                    children: [
+                      const Icon(Icons.lock_outline_rounded,
+                          size: 14, color: AppColors.gold,),
+                      const SizedBox(width: 8),
+                      Text(
+                        '+91 •••• ••••••',
+                        style: TextStyle(
+                          color: AppColors.white.withValues(alpha: 0.35),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2,),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Tap to reveal',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.gold,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ],
+          ),
+
           const SizedBox(height: 14),
-          // CTA — gold gradient pill
+
+          // ── CTA button ───────────────────────────────────────────────────
           GestureDetector(
-            onTap: () {/* call action handled by inquire sheet */},
-            child: Container(
+            onTap: phoneRevealed ? (hasPhone ? _call : null) : onContactTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
               height: 40,
               decoration: BoxDecoration(
-                gradient: AppColors.goldGradient,
+                gradient: phoneRevealed ? null : AppColors.goldGradient,
+                color: phoneRevealed
+                    ? AppColors.success.withValues(alpha: 0.15)
+                    : null,
+                border: phoneRevealed
+                    ? Border.all(color: AppColors.success, width: 1.5)
+                    : null,
                 borderRadius: BorderRadius.circular(20),
               ),
               alignment: Alignment.center,
-              child: Text(
-                'Call Now',
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.navyDark,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    phoneRevealed
+                        ? Icons.call_rounded
+                        : Icons.phone_outlined,
+                    size: 15,
+                    color: phoneRevealed
+                        ? AppColors.success
+                        : AppColors.navyDark,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    phoneRevealed
+                        ? (hasPhone
+                            ? 'Call +91 ${listing.brokerPhone}'
+                            : 'No number available')
+                        : 'Contact Lead Owner',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: phoneRevealed
+                          ? AppColors.success
+                          : AppColors.navyDark,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

@@ -4,16 +4,39 @@ import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
+import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/crm/presentation/widgets/add_lead_sheet.dart';
 import 'package:cpapp/features/crm/presentation/widgets/lead_card.dart';
 import 'package:cpapp/features/crm/presentation/widgets/pipeline_stats_bar.dart';
+import 'package:cpapp/shared/widgets/phone_otp_sheet.dart';
 
 class CrmScreen extends ConsumerWidget {
   const CrmScreen({super.key});
 
-  void _openAddLead(BuildContext context) {
+  void _openAddLead(BuildContext context, WidgetRef ref) {
+    final isVerified = ref.read(isPhoneVerifiedProvider);
+    if (isVerified) {
+      _showAddLeadSheet(context);
+    } else {
+      final user = ref.read(authStateChangesProvider).valueOrNull;
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => PhoneOtpSheet(
+          initialPhone: user?.mobile,
+          onVerified: () {
+            if (context.mounted) _showAddLeadSheet(context);
+          },
+        ),
+      );
+    }
+  }
+
+  void _showAddLeadSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -25,6 +48,7 @@ class CrmScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
     final crmState = ref.watch(crmProvider);
 
     // Show error snack if any
@@ -46,7 +70,7 @@ class CrmScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.navyDark : AppColors.white,
         title: Text(
-          'My Pipeline',
+          l.crmTitle,
           style: AppTypography.titleMedium.copyWith(
             color: isDark ? AppColors.white : AppColors.navyDark,
           ),
@@ -55,8 +79,8 @@ class CrmScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add_rounded, size: 26),
             color: AppColors.gold,
-            onPressed: () => _openAddLead(context),
-            tooltip: 'Add lead',
+            onPressed: () => _openAddLead(context, ref),
+            tooltip: l.addLead,
           ),
         ],
       ),
@@ -68,7 +92,7 @@ class CrmScreen extends ConsumerWidget {
             : _PipelineBody(
                 crmState: crmState,
                 isDark: isDark,
-                onAddLead: () => _openAddLead(context),
+                onAddLead: () => _openAddLead(context, ref),
                 onLeadTap: (lead) =>
                     context.push(_leadDetailPath(lead.id)),
                 onStageAdvance: (lead) => ref
@@ -192,6 +216,7 @@ class _StageTabs extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
+    final l = AppLocalizations.of(context);
     return Container(
       color: isDark ? AppColors.navyDark : AppColors.offWhite,
       height: 52,
@@ -200,7 +225,7 @@ class _StageTabs extends SliverPersistentHeaderDelegate {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           _Tab(
-            label: 'All',
+            label: l.allDeals,
             count: total,
             isSelected: selected == null,
             color: AppColors.gold,
@@ -310,6 +335,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final isFiltered = stageFilter != null;
     return Center(
       child: Padding(
@@ -325,7 +351,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               isFiltered
                   ? 'No ${stageFilter!.label} leads'
-                  : 'No leads yet',
+                  : l.noLeads,
               style: AppTypography.titleSmall.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -333,8 +359,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               isFiltered
-                  ? 'Try a different stage filter.'
-                  : 'Start by adding your first lead or inquire on a listing.',
+                  ? l.tryDifferentFilter
+                  : l.addFirstLeadHint,
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textHint,
               ),
@@ -354,7 +380,7 @@ class _EmptyState extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Text(
-                    '+ Add First Lead',
+                    l.addFirstLead,
                     style: AppTypography.labelMedium.copyWith(
                       color: AppColors.navyDark,
                       fontWeight: FontWeight.w700,

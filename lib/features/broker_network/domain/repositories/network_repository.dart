@@ -14,17 +14,14 @@ abstract interface class NetworkRepository {
 
   Future<Either<Failure, List<Connection>>> fetchConnections(String uid);
 
-  Future<Either<Failure, Connection>> sendConnectionRequest({
-    required String senderUid,
-    required String receiverUid,
+  Future<Either<Failure, Connection>> follow({
+    required String followerUid,
+    required String followingUid,
   });
 
-  Future<Either<Failure, Connection>> acceptConnection(String connectionId);
-
-  Future<Either<Failure, Unit>> removeConnection({
+  Future<Either<Failure, Unit>> unfollow({
     required String connectionId,
     required String uid1,
     required String uid2,
-    required bool wasConnected,
   });
 }

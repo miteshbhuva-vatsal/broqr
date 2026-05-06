@@ -51,6 +51,7 @@ class AddListingFormState {
     this.heroImage,
     this.additionalImages = const [],
     this.isSubmitting = false,
+    this.uploadProgress,
     this.errorMessage,
     this.publishedListing,
   });
@@ -71,6 +72,7 @@ class AddListingFormState {
   final File? heroImage;
   final List<File> additionalImages;
   final bool isSubmitting;
+  final double? uploadProgress;
   final String? errorMessage;
   final Listing? publishedListing;
 
@@ -100,10 +102,12 @@ class AddListingFormState {
     File? heroImage,
     List<File>? additionalImages,
     bool? isSubmitting,
+    double? uploadProgress,
     String? errorMessage,
     Listing? publishedListing,
     bool clearError = false,
     bool clearListing = false,
+    bool clearProgress = false,
   }) {
     return AddListingFormState(
       step: step ?? this.step,
@@ -122,6 +126,7 @@ class AddListingFormState {
       heroImage: heroImage ?? this.heroImage,
       additionalImages: additionalImages ?? this.additionalImages,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      uploadProgress: clearProgress ? null : (uploadProgress ?? this.uploadProgress),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       publishedListing:
           clearListing ? null : (publishedListing ?? this.publishedListing),
@@ -171,10 +176,13 @@ class AddListing extends _$AddListing {
 
   void setHeroImage(File f) => state = state.copyWith(heroImage: f);
 
-  void addAdditionalImage(File f) {
-    if (state.additionalImages.length >= 4) return;
+  void addAdditionalImages(List<File> files) {
+    final remaining = 9 - state.additionalImages.length;
+    if (remaining <= 0) return;
+    final toAdd = files.take(remaining).toList();
     state = state.copyWith(
-        additionalImages: [...state.additionalImages, f],);
+      additionalImages: [...state.additionalImages, ...toAdd],
+    );
   }
 
   void removeAdditionalImage(int index) {
@@ -191,7 +199,7 @@ class AddListing extends _$AddListing {
       return;
     }
 
-    state = state.copyWith(isSubmitting: true, clearError: true);
+    state = state.copyWith(isSubmitting: true, uploadProgress: 0.0, clearError: true);
 
     final role = ref.read(authStateChangesProvider).valueOrNull?.role;
 
@@ -221,12 +229,13 @@ class AddListing extends _$AddListing {
               : state.brokerage.trim(),
           posterRole: role?.name,
           visibility: state.visibility,
+          onProgress: (p) => state = state.copyWith(uploadProgress: p),
         );
 
     await result.fold(
       (failure) async {
         state = state.copyWith(
-            isSubmitting: false, errorMessage: failure.message,);
+            isSubmitting: false, clearProgress: true, errorMessage: failure.message,);
       },
       (listing) async {
         // Upload poster if bytes provided
@@ -237,7 +246,7 @@ class AddListing extends _$AddListing {
               );
         }
         state = state.copyWith(
-            isSubmitting: false, publishedListing: listing,);
+            isSubmitting: false, clearProgress: true, publishedListing: listing,);
       },
     );
   }

@@ -56,14 +56,14 @@ class NetworkRepositoryImpl implements NetworkRepository {
   }
 
   @override
-  Future<Either<Failure, Connection>> sendConnectionRequest({
-    required String senderUid,
-    required String receiverUid,
+  Future<Either<Failure, Connection>> follow({
+    required String followerUid,
+    required String followingUid,
   }) async {
     try {
-      return Right(await _ds.sendConnectionRequest(
-        senderUid: senderUid,
-        receiverUid: receiverUid,
+      return Right(await _ds.follow(
+        followerUid: followerUid,
+        followingUid: followingUid,
       ),);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -73,31 +73,16 @@ class NetworkRepositoryImpl implements NetworkRepository {
   }
 
   @override
-  Future<Either<Failure, Connection>> acceptConnection(
-    String connectionId,
-  ) async {
-    try {
-      return Right(await _ds.acceptConnection(connectionId));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, Unit>> removeConnection({
+  Future<Either<Failure, Unit>> unfollow({
     required String connectionId,
     required String uid1,
     required String uid2,
-    required bool wasConnected,
   }) async {
     try {
-      await _ds.removeConnection(
+      await _ds.unfollow(
         connectionId: connectionId,
         uid1: uid1,
         uid2: uid2,
-        wasConnected: wasConnected,
       );
       return const Right(unit);
     } on ServerException catch (e) {

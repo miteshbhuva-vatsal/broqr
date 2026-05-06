@@ -26,6 +26,7 @@ abstract interface class ListingRepository {
     String? posterRole,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
+    void Function(double)? onProgress,
   });
 
   Future<Either<Failure, String>> uploadPoster({

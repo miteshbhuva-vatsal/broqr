@@ -35,6 +35,7 @@ class ListingRepositoryImpl implements ListingRepository {
     String? posterRole,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
+    void Function(double)? onProgress,
   }) async {
     try {
       final model = await _ds.createListing(
@@ -57,6 +58,7 @@ class ListingRepositoryImpl implements ListingRepository {
         brokerageAmount: brokerageAmount,
         posterRole: posterRole,
         visibility: visibility,
+        onProgress: onProgress,
       );
       return Right(model);
     } on StorageException catch (e) {

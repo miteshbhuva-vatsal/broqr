@@ -1,47 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
+import 'package:cpapp/core/l10n/locale_provider.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/shared/widgets/app_button.dart';
 
-/// 3-slide onboarding carousel explaining the app's value proposition.
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
-
-  static const _slides = [
-    _OnboardingSlide(
-      icon: Icons.home_work_outlined,
-      title: 'Find Stressed\nProperty Deals',
-      subtitle:
-          'Browse exclusive Barter, Investor & Discount deals shared directly by verified brokers.',
-      color: AppColors.gold,
-    ),
-    _OnboardingSlide(
-      icon: Icons.people_outline_rounded,
-      title: 'Build Your\nBroker Network',
-      subtitle:
-          'Connect with brokers across your city. Share deals, collaborate, and grow your referral pipeline.',
-      color: AppColors.info,
-    ),
-    _OnboardingSlide(
-      icon: Icons.assignment_turned_in_outlined,
-      title: 'Manage Leads\nLike a Pro',
-      subtitle:
-          'Built-in CRM to track every inquiry through your pipeline — from first contact to closed deal.',
-      color: AppColors.success,
-    ),
-  ];
 
   @override
   void dispose() {
@@ -49,8 +27,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _onNext() {
-    if (_currentPage < _slides.length - 1) {
+  void _onNext(int slideCount) {
+    if (_currentPage < slideCount - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
@@ -62,24 +40,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLast = _currentPage == _slides.length - 1;
+    final l = AppLocalizations.of(context);
+
+    final slides = [
+      _OnboardingSlide(
+        icon: Icons.home_work_outlined,
+        title: l.slide1Title,
+        subtitle: l.slide1Subtitle,
+        color: AppColors.gold,
+      ),
+      _OnboardingSlide(
+        icon: Icons.people_outline_rounded,
+        title: l.slide2Title,
+        subtitle: l.slide2Subtitle,
+        color: AppColors.info,
+      ),
+      _OnboardingSlide(
+        icon: Icons.assignment_turned_in_outlined,
+        title: l.slide3Title,
+        subtitle: l.slide3Subtitle,
+        color: AppColors.success,
+      ),
+    ];
+
+    final isLast = _currentPage == slides.length - 1;
 
     return Scaffold(
       backgroundColor: AppColors.navyDark,
       body: SafeArea(
         child: Column(
           children: [
-            // Skip button
-            Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: () => context.go(Routes.login),
-                child: Text(
-                  'Skip',
-                  style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.textOnDarkSecondary,
+            // Top row: skip + language
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () => context.go(Routes.login),
+                    child: Text(
+                      l.skip,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.textOnDarkSecondary,
+                      ),
+                    ),
                   ),
-                ),
+                  const Spacer(),
+                  _OnboardingLanguagePicker(l: l),
+                ],
               ),
             ),
 
@@ -87,9 +95,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _slides.length,
+                itemCount: slides.length,
                 onPageChanged: (i) => setState(() => _currentPage = i),
-                itemBuilder: (_, i) => _SlideView(slide: _slides[i]),
+                itemBuilder: (_, i) => _SlideView(slide: slides[i]),
               ),
             ),
 
@@ -100,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   SmoothPageIndicator(
                     controller: _pageController,
-                    count: _slides.length,
+                    count: slides.length,
                     effect: const ExpandingDotsEffect(
                       activeDotColor: AppColors.gold,
                       dotColor: AppColors.navyLight,
@@ -111,10 +119,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   const SizedBox(height: 28),
                   AppButton(
-                    label: isLast ? 'Get Started' : 'Next',
-                    onPressed: _onNext,
+                    label: isLast ? l.getStarted : l.next,
+                    onPressed: () => _onNext(slides.length),
                     suffixIcon: Icon(
-                      isLast ? Icons.rocket_launch_outlined : Icons.arrow_forward_rounded,
+                      isLast
+                          ? Icons.rocket_launch_outlined
+                          : Icons.arrow_forward_rounded,
                       size: 18,
                       color: AppColors.navyDark,
                     ),
@@ -129,6 +139,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
+// ── Language picker (compact icon button for onboarding) ──────────────────────
+
+class _OnboardingLanguagePicker extends ConsumerWidget {
+  const _OnboardingLanguagePicker({required this.l});
+  final AppLocalizations l;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(localeProvider);
+    const labels = {'en': 'EN', 'hi': 'हिं', 'gu': 'ગુ'};
+    final label = labels[current.languageCode] ?? 'EN';
+
+    return GestureDetector(
+      onTap: () => context.push(Routes.language),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderDark),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.language_rounded,
+                color: AppColors.gold, size: 14,),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Slide view ────────────────────────────────────────────────────────────────
+
 class _SlideView extends StatelessWidget {
   const _SlideView({required this.slide});
   final _OnboardingSlide slide;
@@ -140,7 +193,6 @@ class _SlideView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Icon bubble
           Container(
             width: 120,
             height: 120,

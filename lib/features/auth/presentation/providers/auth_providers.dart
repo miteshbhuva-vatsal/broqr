@@ -57,6 +57,18 @@ Stream<AppUser?> authStateChanges(Ref ref) {
   return ref.watch(authRepositoryProvider).authStateChanges;
 }
 
+// ── Phone verification ────────────────────────────────────────────────────
+
+/// Flipped to true within this session after successful OTP verification.
+/// Persists in memory so UI updates instantly without waiting for auth reload.
+final sessionPhoneVerifiedProvider = StateProvider<bool>((_) => false);
+
+/// True when the user's phone is verified — either from Firestore or this session.
+final isPhoneVerifiedProvider = Provider<bool>((ref) {
+  if (ref.watch(sessionPhoneVerifiedProvider)) return true;
+  return ref.watch(authStateChangesProvider).valueOrNull?.isPhoneVerified ?? false;
+});
+
 // ── Auth notifier (actions) ───────────────────────────────────────────────
 
 @riverpod

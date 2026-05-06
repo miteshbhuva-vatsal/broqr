@@ -26,7 +26,7 @@ abstract final class AppConstants {
   static const int leadsPageSize = 20;
 
   // ── Listing limits ────────────────────────────────────────────────────────
-  static const int maxListingImages = 5;
+  static const int maxListingImages = 10;
   static const int maxListingTitleLength = 80;
   static const int maxListingDescLength = 500;
 
@@ -51,8 +51,7 @@ abstract final class AppConstants {
       '{title}\n{location}\n₹{price}\n\n'
       'Download CPApp: https://cpapp.page.link/download';
 
-  // ── Twilio ────────────────────────────────────────────────────────────────
-  // Replace with actual values from environment / secrets
-  static const String twilioVerifyBaseUrl =
-      'https://verify.twilio.com/v2/Services';
+  // ── Backend API (Next.js admin panel — update with your DigitalOcean URL) ──
+  // Set this to your deployed admin URL, e.g. https://cpapp-admin.ondigitalocean.app
+  static const String apiBaseUrl = 'https://cpapp-admin.ondigitalocean.app';
 }

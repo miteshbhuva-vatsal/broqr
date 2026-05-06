@@ -96,6 +96,56 @@ class ProfileSetup extends _$ProfileSetup {
     );
   }
 
+  Future<void> updateProfile({
+    required String uid,
+    required String name,
+    required String mobile,
+    required String city,
+    UserRole? role,
+    String? reraNumber,
+    File? photoFile,
+  }) async {
+    state = const ProfileSetupState.saving();
+
+    final result = await ref.read(profileRepositoryProvider).updateProfile(
+          uid: uid,
+          name: name,
+          mobile: mobile,
+          city: city,
+          role: role,
+          reraNumber: reraNumber?.isEmpty == true ? null : reraNumber,
+          photoFile: photoFile,
+        );
+
+    result.fold(
+      (failure) => state = ProfileSetupState.error(failure.message),
+      (_) => state = const ProfileSetupState.success(),
+    );
+  }
+
+  Future<void> submitVerificationRequest({
+    required String uid,
+    required String name,
+    String? reraNumber,
+    String? mobile,
+  }) async {
+    state = const ProfileSetupState.saving();
+
+    final result = await ref
+        .read(profileRepositoryProvider)
+        .submitVerificationRequest(
+          uid: uid,
+          name: name,
+          reraNumber: reraNumber,
+          mobile: mobile,
+        );
+
+    result.fold(
+      (failure) => state = ProfileSetupState.error(failure.message),
+      (_) => state = const ProfileSetupState.success(),
+    );
+  }
+
   void clearError() {
     if (state is ProfileSetupError) state = const ProfileSetupState.idle();
   }

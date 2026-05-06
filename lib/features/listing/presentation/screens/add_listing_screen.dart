@@ -145,7 +145,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       },
       child: LoadingOverlay(
         isLoading: formState.isSubmitting,
-        message: 'Publishing your listing…',
+        message: formState.uploadProgress != null
+            ? 'Uploading photos… ${(formState.uploadProgress! * 100).round()}%'
+            : 'Publishing your listing…',
+        progress: formState.uploadProgress,
         child: Scaffold(
           backgroundColor:
               isDark ? AppColors.navyDark : AppColors.offWhite,
@@ -255,9 +258,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                         onHeroImagePicked: ref
                             .read(addListingProvider.notifier)
                             .setHeroImage,
-                        onAdditionalImagePicked: ref
+                        onAdditionalImagesPicked: ref
                             .read(addListingProvider.notifier)
-                            .addAdditionalImage,
+                            .addAdditionalImages,
                         onRemoveAdditional: ref
                             .read(addListingProvider.notifier)
                             .removeAdditionalImage,

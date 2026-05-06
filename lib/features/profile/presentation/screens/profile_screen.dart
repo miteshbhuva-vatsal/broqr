@@ -11,6 +11,8 @@ import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
 import 'package:cpapp/features/listing/presentation/providers/listing_providers.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
+import 'package:cpapp/features/profile/presentation/providers/profile_providers.dart';
 import 'package:cpapp/shared/widgets/app_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -43,6 +45,7 @@ class _ProfileBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final leadsCount = ref.watch(crmProvider.select((s) => s.activeCount));
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
@@ -66,46 +69,47 @@ class _ProfileBody extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _NetworkTile(connections: user.connectionsCount),
                   const SizedBox(height: 28),
-                  const _SectionTitle('Contact Info'),
+                  _SectionTitle(l.contactInfo),
                   const SizedBox(height: 12),
                   _InfoTile(
                     icon: Icons.phone_outlined,
-                    label: 'Mobile',
+                    label: l.mobile,
                     value: user.mobile != null
                         ? '+91 ${user.mobile}'
-                        : 'Not set',
+                        : l.notSet,
                     isEmpty: user.mobile == null,
                   ),
                   const SizedBox(height: 10),
                   _InfoTile(
                     icon: Icons.email_outlined,
-                    label: 'Email',
-                    value: user.email.isNotEmpty ? user.email : 'Not set',
+                    label: l.email,
+                    value: user.email.isNotEmpty ? user.email : l.notSet,
                     isEmpty: user.email.isEmpty,
                   ),
                   if (user.city != null) ...[
                     const SizedBox(height: 10),
                     _InfoTile(
                       icon: Icons.location_city_outlined,
-                      label: 'City',
+                      label: l.city,
                       value: user.city!,
                     ),
                   ],
-                  if (user.reraNumber != null &&
-                      user.reraNumber!.isNotEmpty) ...[
-                    const SizedBox(height: 28),
-                    const _SectionTitle('Verification'),
-                    const SizedBox(height: 12),
+                  const SizedBox(height: 28),
+                  _SectionTitle(l.verification),
+                  const SizedBox(height: 12),
+                  if (user.reraNumber != null && user.reraNumber!.isNotEmpty) ...[
                     _InfoTile(
                       icon: Icons.verified_user_outlined,
-                      label: 'RERA Number',
+                      label: l.reraNumber,
                       value: user.reraNumber!,
                       valueColor: AppColors.success,
                     ),
+                    const SizedBox(height: 10),
                   ],
+                  _VerificationBadgeTile(user: user),
                   const SizedBox(height: 40),
                   AppButton(
-                    label: 'Sign Out',
+                    label: l.signOut,
                     variant: AppButtonVariant.outline,
                     prefixIcon: const Icon(
                       Icons.logout_rounded,
@@ -130,21 +134,22 @@ class _ProfileBody extends ConsumerWidget {
   }
 
   Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final l = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        title: Text(l.signOut),
+        content: Text(l.signOutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Sign Out',
-              style: TextStyle(color: AppColors.error),
+            child: Text(
+              l.signOut,
+              style: const TextStyle(color: AppColors.error),
             ),
           ),
         ],
@@ -185,6 +190,13 @@ class _ProfileHeader extends StatelessWidget {
       expandedHeight: 260,
       pinned: true,
       backgroundColor: AppColors.navyDark,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined, color: AppColors.white),
+          tooltip: 'Edit Profile',
+          onPressed: () => context.push(Routes.editProfile),
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: const BoxDecoration(
@@ -210,7 +222,7 @@ class _ProfileHeader extends StatelessWidget {
                       const SizedBox(width: 6),
                       const Icon(
                         Icons.verified_rounded,
-                        color: AppColors.gold,
+                        color: AppColors.success,
                         size: 20,
                       ),
                     ],
@@ -280,6 +292,7 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
     final divider = Container(
       width: 1, height: 48,
       color: isDark ? AppColors.borderDark : AppColors.border,
@@ -301,7 +314,7 @@ class _StatsRow extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: _StatCell(
                 value: listings.toString(),
-                label: 'Listings',
+                label: l.listings,
                 icon: Icons.apartment_rounded,
                 showArrow: true,
               ),
@@ -314,7 +327,7 @@ class _StatsRow extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: _StatCell(
                 value: connections.toString(),
-                label: 'Network',
+                label: l.network,
                 icon: Icons.people_outline_rounded,
                 showArrow: true,
               ),
@@ -327,7 +340,7 @@ class _StatsRow extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: _StatCell(
                 value: leadsCount.toString(),
-                label: 'Leads',
+                label: l.leads,
                 icon: Icons.assignment_outlined,
                 valueColor: leadsCount > 0 ? AppColors.gold : null,
                 showArrow: true,
@@ -481,17 +494,18 @@ class _MyListingsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final listingsAsync = ref.watch(brokerListingsProvider(uid));
+    final l = AppLocalizations.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const _SectionTitle('My Listings'),
+            _SectionTitle(l.myListings),
             const Spacer(),
             listingsAsync.whenOrNull(
-              data: (l) => Text(
-                '${l.length}',
+              data: (items) => Text(
+                '${items.length}',
                 style: AppTypography.labelSmall
                     .copyWith(color: AppColors.textSecondary),
               ),
@@ -508,7 +522,7 @@ class _MyListingsSection extends ConsumerWidget {
             ),
           ),
           error: (_, __) => Text(
-            'Could not load listings',
+            l.couldNotLoadListings,
             style: AppTypography.bodySmall
                 .copyWith(color: AppColors.textSecondary),
           ),
@@ -518,7 +532,7 @@ class _MyListingsSection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    'No listings yet — tap + to post one',
+                    l.noListingsYet,
                     style: AppTypography.bodySmall
                         .copyWith(color: AppColors.textHint),
                   ),
@@ -658,6 +672,171 @@ class _ProfileListingTile extends StatelessWidget {
   }
 }
 
+// ── Green-tick verification tile ─────────────────────────────────────────────
+
+class _VerificationBadgeTile extends ConsumerStatefulWidget {
+  const _VerificationBadgeTile({required this.user});
+  final AppUser user;
+
+  @override
+  ConsumerState<_VerificationBadgeTile> createState() =>
+      _VerificationBadgeTileState();
+}
+
+class _VerificationBadgeTileState
+    extends ConsumerState<_VerificationBadgeTile> {
+  bool _requesting = false;
+
+  Future<void> _applyForVerification() async {
+    setState(() => _requesting = true);
+    await ref.read(profileSetupProvider.notifier).submitVerificationRequest(
+          uid: widget.user.uid,
+          name: widget.user.name,
+          reraNumber: widget.user.reraNumber,
+          mobile: widget.user.mobile,
+        );
+    if (mounted) {
+      setState(() => _requesting = false);
+      final l = AppLocalizations.of(context);
+      final state = ref.read(profileSetupProvider);
+      if (state is ProfileSetupSuccess) {
+        ref.read(profileSetupProvider.notifier).clearError();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.verificationRequestSent),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else if (state is ProfileSetupError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.message),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(profileSetupProvider.notifier).clearError();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
+
+    if (widget.user.isVerified) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.verified_rounded,
+                color: AppColors.success, size: 22,),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.verifiedBroker,
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    l.accountVerified,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.verified_outlined,
+                color: AppColors.success, size: 22,),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.getVerified,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: isDark ? AppColors.white : AppColors.navyDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  l.applyGreenTick,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _requesting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.success,
+                  ),
+                )
+              : OutlinedButton(
+                  onPressed: _applyForVerification,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.success,
+                    side: const BorderSide(color: AppColors.success),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6,),
+                    minimumSize: const Size(70, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),),
+                  ),
+                  child: Text(l.apply, style: const TextStyle(fontSize: 12)),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Network entry tile shown on profile ───────────────────────────────────────
 
 class _NetworkTile extends StatelessWidget {
@@ -667,6 +846,7 @@ class _NetworkTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
 
     return GestureDetector(
       onTap: () => context.push(Routes.network),
@@ -700,7 +880,7 @@ class _NetworkTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'My Network',
+                    l.myNetwork,
                     style: AppTypography.labelLarge.copyWith(
                       color: isDark ? AppColors.white : AppColors.navyDark,
                       fontWeight: FontWeight.w700,
@@ -708,8 +888,8 @@ class _NetworkTile extends StatelessWidget {
                   ),
                   Text(
                     connections > 0
-                        ? '$connections broker${connections == 1 ? '' : 's'} connected'
-                        : 'Browse and connect with brokers',
+                        ? '$connections ${connections == 1 ? l.brokerConnected : l.brokersConnected}'
+                        : l.browseAndConnect,
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 12,

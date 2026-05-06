@@ -48,6 +48,9 @@ abstract final class Routes {
   // ── Search ────────────────────────────────────────────────────────────────
   static const String search = '/app/search';
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+  static const String language = '/app/settings/language';
+
   // ── Dev (debug builds only) ───────────────────────────────────────────────
   static const String devSeed = '/dev/seed';
 }

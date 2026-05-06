@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cpapp/core/constants/app_constants.dart';
 import 'package:cpapp/core/errors/exceptions.dart';
@@ -31,6 +33,7 @@ abstract interface class ListingRemoteDataSource {
     String? posterRole,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
+    void Function(double)? onProgress,
   });
 
   Future<String> uploadPoster({
@@ -91,17 +94,29 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
     String? posterRole,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
+    void Function(double)? onProgress,
   }) async {
     try {
       final id = const Uuid().v4();
       final basePath = '${AppConstants.listingImagesPath}/$id';
+      final totalFiles = 1 + additionalImageFiles.length;
+      var completed = 0;
 
-      final heroUrl = await _uploadImage(heroImageFile, '$basePath/hero.jpg');
+      Future<String> uploadOne(File f, String p) async {
+        final url = await _uploadImage(f, p);
+        completed++;
+        onProgress?.call(completed / totalFiles);
+        return url;
+      }
 
-      final additionalUrls = await Future.wait([
-        for (var i = 0; i < additionalImageFiles.length; i++)
-          _uploadImage(additionalImageFiles[i], '$basePath/image_$i.jpg'),
-      ]);
+      final heroUrl = await uploadOne(heroImageFile, '$basePath/hero.jpg');
+
+      final additionalUrls = <String>[];
+      for (var i = 0; i < additionalImageFiles.length; i++) {
+        additionalUrls.add(
+          await uploadOne(additionalImageFiles[i], '$basePath/image_$i.jpg'),
+        );
+      }
 
       final model = ListingModel(
         id: id,
@@ -188,18 +203,20 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
         final snap = await query.get();
         results = snap.docs.map((d) => ListingModel.fromFirestore(d)).toList();
       } else {
-        Query<Map<String, dynamic>> query =
-            _db.collection(AppConstants.listingsCollection)
-                .where('status', isEqualTo: 'active');
+        Query<Map<String, dynamic>> query = _db
+            .collection(AppConstants.listingsCollection)
+            .where('status', isEqualTo: 'active');
 
         if (category != null) {
           query = query.where('category', isEqualTo: category.name);
         }
         if (propertyType != null) {
-          query = query.where('propertyType', isEqualTo: propertyType.firestoreKey);
+          query =
+              query.where('propertyType', isEqualTo: propertyType.firestoreKey);
         }
 
-        query = query.orderBy('createdAt', descending: true)
+        query = query
+            .orderBy('createdAt', descending: true)
             .orderBy(FieldPath.documentId, descending: true)
             .limit(limit);
 
@@ -337,11 +354,43 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
   }
 
   Future<String> _uploadImage(File file, String path) async {
+    if (!file.existsSync()) {
+      throw StorageException('Image file not found: ${file.path}');
+    }
+
+    final toUpload = await _compressImage(file);
+
     final ref = _storage.ref().child(path);
-    final task = await ref.putFile(
-      file,
+    final snapshot = await ref.putFile(
+      toUpload,
       SettableMetadata(contentType: 'image/jpeg'),
     );
-    return task.ref.getDownloadURL();
+
+    if (toUpload.path != file.path) {
+      try {
+        toUpload.deleteSync();
+      } catch (_) {}
+    }
+
+    if (snapshot.state != TaskState.success) {
+      throw StorageException('Upload failed (state: ${snapshot.state}): $path');
+    }
+
+    return snapshot.ref.getDownloadURL();
+  }
+
+  Future<File> _compressImage(File file) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final target = '${dir.path}/${const Uuid().v4()}.jpg';
+      final result = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        target,
+        quality: AppConstants.imageQuality,
+        keepExif: false,
+      );
+      if (result != null) return File(result.path);
+    } catch (_) {}
+    return file;
   }
 }

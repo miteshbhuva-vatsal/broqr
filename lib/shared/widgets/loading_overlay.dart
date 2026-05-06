@@ -10,12 +10,14 @@ class LoadingOverlay extends StatelessWidget {
     required this.isLoading,
     required this.child,
     this.message,
+    this.progress,
     this.barrierOpacity = 0.4,
   });
 
   final bool isLoading;
   final Widget child;
   final String? message;
+  final double? progress;
   final double barrierOpacity;
 
   @override
@@ -28,7 +30,7 @@ class LoadingOverlay extends StatelessWidget {
             child: ColoredBox(
               color: AppColors.scrim.withValues(alpha: barrierOpacity),
               child: Center(
-                child: _LoadingCard(message: message),
+                child: _LoadingCard(message: message, progress: progress),
               ),
             ),
           ),
@@ -38,8 +40,9 @@ class LoadingOverlay extends StatelessWidget {
 }
 
 class _LoadingCard extends StatelessWidget {
-  const _LoadingCard({this.message});
+  const _LoadingCard({this.message, this.progress});
   final String? message;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -61,14 +64,28 @@ class _LoadingCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+          if (progress != null) ...[
+            SizedBox(
+              width: 160,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: AppColors.border,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
+                ),
+              ),
             ),
-          ),
+          ] else
+            const SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+              ),
+            ),
           if (message != null) ...[
             const SizedBox(height: 16),
             Text(

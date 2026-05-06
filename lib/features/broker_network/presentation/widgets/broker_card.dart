@@ -6,7 +6,6 @@ import 'package:cpapp/features/broker_network/domain/entities/connection.dart';
 import 'package:cpapp/features/broker_network/presentation/providers/network_providers.dart';
 
 const _navy = Color(0xFF0A1628);
-const _gold = Color(0xFFD4A843);
 
 class BrokerCard extends ConsumerWidget {
   const BrokerCard({
@@ -90,7 +89,7 @@ class _Avatar extends StatelessWidget {
               child: const Icon(
                 Icons.verified,
                 size: 14,
-                color: _gold,
+                color: Color(0xFF22C55E),
               ),
             ),
           ),
@@ -145,7 +144,7 @@ class _Info extends StatelessWidget {
             _Stat(
               icon: Icons.people_outline,
               value: broker.connectionsCount,
-              label: 'connections',
+              label: 'followers',
             ),
           ],
         ),
@@ -198,68 +197,22 @@ class _ActionButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    switch (status) {
-      case ConnectionStatus.none:
-        return _OutlinedActionButton(
-          label: 'Connect',
-          color: _navy,
-          onTap: () =>
-              ref.read(networkProvider.notifier).sendConnectionRequest(broker.uid),
-        );
-
-      case ConnectionStatus.pendingSent:
-        return const _OutlinedActionButton(
-          label: 'Pending',
-          color: Colors.grey,
-          onTap: null,
-        );
-
-      case ConnectionStatus.pendingReceived:
-        return _OutlinedActionButton(
-          label: 'Accept',
-          color: _gold,
-          onTap: connectionId == null
-              ? null
-              : () => ref
-                  .read(networkProvider.notifier)
-                  .acceptConnection(connectionId!, broker.uid),
-        );
-
-      case ConnectionStatus.connected:
-        return _OutlinedActionButton(
-          label: 'Connected',
-          color: Colors.green,
-          onTap: connectionId == null
-              ? null
-              : () => _confirmRemove(context, ref),
-        );
+    if (status == ConnectionStatus.following) {
+      return _OutlinedActionButton(
+        label: 'Following',
+        color: Colors.green,
+        onTap: connectionId == null
+            ? null
+            : () => ref.read(networkProvider.notifier).unfollow(
+                  connectionId: connectionId!,
+                  otherUid: broker.uid,
+                ),
+      );
     }
-  }
-
-  void _confirmRemove(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Remove Connection'),
-        content: Text('Remove ${broker.name} from your connections?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(networkProvider.notifier).removeConnection(
-                    connectionId: connectionId!,
-                    otherUid: broker.uid,
-                    wasConnected: status == ConnectionStatus.connected,
-                  );
-            },
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    return _OutlinedActionButton(
+      label: 'Follow',
+      color: _navy,
+      onTap: () => ref.read(networkProvider.notifier).follow(broker.uid),
     );
   }
 }

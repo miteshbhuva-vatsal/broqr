@@ -2,12 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:cpapp/core/constants/route_constants.dart';
-import 'package:cpapp/core/l10n/app_localizations.dart';
-import 'package:cpapp/core/router/app_router.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
-import 'package:cpapp/shared/widgets/app_guide.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/auth/domain/entities/user_role.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
@@ -18,16 +13,14 @@ import 'package:cpapp/shared/widgets/app_button.dart';
 import 'package:cpapp/shared/widgets/app_text_field.dart';
 import 'package:cpapp/shared/widgets/loading_overlay.dart';
 
-/// Broker profile setup — shown once after first social login.
-/// Collects: display name, mobile, city, RERA (optional), profile photo.
-class ProfileSetupScreen extends ConsumerStatefulWidget {
-  const ProfileSetupScreen({super.key});
+class EditProfileScreen extends ConsumerStatefulWidget {
+  const EditProfileScreen({super.key});
 
   @override
-  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
   late final TextEditingController _mobileCtrl;
@@ -37,15 +30,30 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   UserRole? _selectedRole;
   File? _photoFile;
   bool _submitted = false;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill name from social login profile
-    final user = ref.read(authStateChangesProvider).valueOrNull;
-    _nameCtrl = TextEditingController(text: user?.name ?? '');
-    _mobileCtrl = TextEditingController(text: user?.mobile ?? '');
+    _nameCtrl = TextEditingController();
+    _mobileCtrl = TextEditingController();
     _reraCtrl = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final user = ref.read(authStateChangesProvider).valueOrNull;
+      if (user != null) {
+        _nameCtrl.text = user.name;
+        _mobileCtrl.text = user.mobile ?? '';
+        _reraCtrl.text = user.reraNumber ?? '';
+        _selectedCity = user.city;
+        _selectedRole = user.role;
+      }
+    }
   }
 
   @override
@@ -56,28 +64,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     super.dispose();
   }
 
-  // ── Validation ────────────────────────────────────────────────────────────
-
   String? _validateName(String? v) {
-    final l = AppLocalizations.of(context);
-    if (v == null || v.trim().length < 2) return l.enterFullName;
+    if (v == null || v.trim().length < 2) return 'Enter your full name';
     return null;
   }
 
   String? _validateMobile(String? v) {
-    final l = AppLocalizations.of(context);
-    if (v == null || v.trim().isEmpty) return l.mobileRequired;
-    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(v.trim())) return l.invalidMobile;
+    if (v == null || v.trim().isEmpty) return 'Mobile number is required';
+    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(v.trim())) {
+      return 'Enter a valid 10-digit Indian mobile number';
+    }
     return null;
   }
 
   String? _validateCity() {
-    final l = AppLocalizations.of(context);
-    if (_selectedCity == null || _selectedCity!.isEmpty) return l.selectCity;
+    if (_selectedCity == null || _selectedCity!.isEmpty) {
+      return 'Please select your city';
+    }
     return null;
   }
-
-  // ── Actions ───────────────────────────────────────────────────────────────
 
   Future<void> _pickCity() async {
     final city = await showModalBottomSheet<String>(
@@ -89,50 +94,41 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (city != null) setState(() => _selectedCity = city);
   }
 
-  String? _validateRole() {
-    final l = AppLocalizations.of(context);
-    return _selectedRole == null ? l.selectRole : null;
-  }
-
   Future<void> _submit() async {
     setState(() => _submitted = true);
-    if (!_formKey.currentState!.validate() ||
-        _validateCity() != null ||
-        _validateRole() != null) {
+    if (!_formKey.currentState!.validate() || _validateCity() != null) {
       return;
     }
 
-    await ref.read(profileSetupProvider.notifier).saveProfile(
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    if (user == null) return;
+
+    await ref.read(profileSetupProvider.notifier).updateProfile(
+          uid: user.uid,
           name: _nameCtrl.text.trim(),
           mobile: _mobileCtrl.text.trim(),
           city: _selectedCity!,
-          role: _selectedRole!,
+          role: _selectedRole,
           reraNumber: _reraCtrl.text.trim().isEmpty ? null : _reraCtrl.text.trim(),
           photoFile: _photoFile,
         );
   }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authStateChangesProvider).valueOrNull;
 
-    // Listen for save result → navigate or show error
     ref.listen<ProfileSetupState>(profileSetupProvider, (_, next) {
       switch (next) {
         case ProfileSetupSuccess():
-          ref.read(profileCompleteOverrideProvider.notifier).state = true;
-          showGeneralDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            barrierColor: Colors.transparent,
-            pageBuilder: (ctx, _, __) => AppGuide(
-              onDone: () {
-                Navigator.of(ctx).pop();
-                context.go(Routes.feed);
-              },
+          ref.read(profileSetupProvider.notifier).clearError();
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         case ProfileSetupError(:final message):
@@ -149,67 +145,56 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       }
     });
 
-    final l = AppLocalizations.of(context);
     final setupState = ref.watch(profileSetupProvider);
     final isSaving = setupState is ProfileSetupSaving;
     final cityError = _submitted ? _validateCity() : null;
 
     return LoadingOverlay(
       isLoading: isSaving,
-      message: l.savingProfile,
+      message: 'Saving profile…',
       child: Scaffold(
-        backgroundColor:
-            isDark ? AppColors.navyDark : AppColors.offWhite,
+        backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
+        appBar: AppBar(
+          backgroundColor: AppColors.navyDark,
+          foregroundColor: AppColors.white,
+          title: Text(
+            'Edit Profile',
+            style: AppTypography.titleSmall.copyWith(color: AppColors.white),
+          ),
+          centerTitle: true,
+        ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 12),
-
-                  // ── Header ──────────────────────────────────────────────
-                  Text(
-                    l.setupProfileTitle,
-                    style: AppTypography.headlineMedium.copyWith(
-                      color: isDark ? AppColors.white : AppColors.navyDark,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l.setupProfileSubtitle,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
+                  // ── Profile photo ──────────────────────────────────────────
+                  Center(
+                    child: Column(
+                      children: [
+                        ProfilePhotoPicker(
+                          currentFile: _photoFile,
+                          networkUrl: user?.photoUrl,
+                          onImagePicked: (f) => setState(() => _photoFile = f),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap to change photo',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 28),
 
-                  // ── Role selection ───────────────────────────────────────
-                  Row(
-                    children: [
-                      Text(
-                        l.iAmA,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: isDark
-                              ? AppColors.textOnDarkSecondary
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      const Text(
-                        '*',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                  // ── Role selection ─────────────────────────────────────────
+                  const _FieldLabel('I am a', required: false),
                   const SizedBox(height: 10),
                   GridView.count(
                     crossAxisCount: 2,
@@ -223,49 +208,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                               role: role,
                               isSelected: _selectedRole == role,
                               isDark: isDark,
-                              onTap: () =>
-                                  setState(() => _selectedRole = role),
+                              onTap: () => setState(() => _selectedRole = role),
                             ),)
                         .toList(),
                   ),
-                  if (_submitted && _validateRole() != null) ...[
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        _validateRole()!,
-                        style: AppTypography.labelSmall
-                            .copyWith(color: AppColors.error),
-                      ),
-                    ),
-                  ],
 
                   const SizedBox(height: 28),
 
-                  // ── Profile photo ────────────────────────────────────────
-                  Center(
-                    child: Column(
-                      children: [
-                        ProfilePhotoPicker(
-                          currentFile: _photoFile,
-                          networkUrl: user?.photoUrl,
-                          onImagePicked: (f) => setState(() => _photoFile = f),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l.tapToAddPhoto,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // ── Full name ────────────────────────────────────────────
-                  _FieldLabel(l.fullName, required: true),
+                  // ── Full name ──────────────────────────────────────────────
+                  const _FieldLabel('Full Name', required: true),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _nameCtrl,
@@ -280,8 +231,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── Mobile ───────────────────────────────────────────────
-                  _FieldLabel(l.mobileNumber, required: true),
+                  // ── Mobile ─────────────────────────────────────────────────
+                  const _FieldLabel('Mobile Number', required: true),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _mobileCtrl,
@@ -300,15 +251,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── City ─────────────────────────────────────────────────
-                  _FieldLabel(l.city, required: true),
+                  // ── City ───────────────────────────────────────────────────
+                  const _FieldLabel('City', required: true),
                   const SizedBox(height: 6),
                   GestureDetector(
                     onTap: _pickCity,
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14,),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.surfaceDark
@@ -333,7 +286,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _selectedCity ?? l.selectYourCity,
+                              _selectedCity ?? 'Select your city',
                               style: AppTypography.bodyMedium.copyWith(
                                 color: _selectedCity != null
                                     ? (isDark
@@ -343,8 +296,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                               ),
                             ),
                           ),
-                          const Icon(Icons.keyboard_arrow_down_rounded,
-                              color: AppColors.textSecondary,),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.textSecondary,
+                          ),
                         ],
                       ),
                     ),
@@ -355,45 +310,42 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       padding: const EdgeInsets.only(left: 4),
                       child: Text(
                         cityError,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.error,
-                        ),
+                        style: AppTypography.labelSmall
+                            .copyWith(color: AppColors.error),
                       ),
                     ),
                   ],
 
                   const SizedBox(height: 20),
 
-                  // ── RERA (optional) ──────────────────────────────────────
-                  _FieldLabel(l.reraNumber, required: false),
+                  // ── RERA (optional) ────────────────────────────────────────
+                  const _FieldLabel('RERA Number', required: false),
                   const SizedBox(height: 6),
                   AppTextField(
                     controller: _reraCtrl,
                     hint: 'e.g. MH/RERA/A12345 (optional)',
                     prefixIcon: const Icon(
-                        Icons.verified_user_outlined, size: 20,),
+                      Icons.verified_user_outlined,
+                      size: 20,
+                    ),
                     textInputAction: TextInputAction.done,
                     textCapitalization: TextCapitalization.characters,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.reraHint,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
                   ),
 
                   const SizedBox(height: 40),
 
-                  // ── Save button ──────────────────────────────────────────
+                  // ── Save button ────────────────────────────────────────────
                   AppButton(
-                    label: l.saveAndContinue,
+                    label: 'Save Changes',
                     onPressed: isSaving ? null : _submit,
                     isLoading: isSaving,
                     suffixIcon: isSaving
                         ? null
-                        : const Icon(Icons.arrow_forward_rounded,
-                            size: 18, color: AppColors.navyDark,),
+                        : const Icon(
+                            Icons.check_rounded,
+                            size: 18,
+                            color: AppColors.navyDark,
+                          ),
                   ),
 
                   const SizedBox(height: 32),
@@ -407,7 +359,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 }
 
-// ── Role selection card ────────────────────────────────────────────────────
+// ── Role selection card ────────────────────────────────────────────────────────
 
 class _RoleCard extends StatelessWidget {
   const _RoleCard({
@@ -483,7 +435,7 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-// ── Reusable field label ────────────────────────────────────────────────────
+// ── Field label ────────────────────────────────────────────────────────────────
 
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.label, {required this.required});
@@ -505,11 +457,14 @@ class _FieldLabel extends StatelessWidget {
         ),
         if (required) ...[
           const SizedBox(width: 3),
-          const Text('*',
-              style: TextStyle(
-                  color: AppColors.error,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,),),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: AppColors.error,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ],
     );

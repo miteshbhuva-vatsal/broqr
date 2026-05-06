@@ -17,6 +17,17 @@ abstract interface class ProfileRepository {
     File? photoFile,
   });
 
+  /// Updates an already-complete profile (role is optional).
+  Future<Either<Failure, AppUser>> updateProfile({
+    required String uid,
+    required String name,
+    required String mobile,
+    required String city,
+    UserRole? role,
+    String? reraNumber,
+    File? photoFile,
+  });
+
   /// Uploads a new profile photo and returns the download URL.
   Future<Either<Failure, String>> uploadProfilePhoto({
     required String uid,
@@ -25,4 +36,12 @@ abstract interface class ProfileRepository {
 
   /// Fetches the current broker profile from Firestore.
   Future<Either<Failure, AppUser>> fetchProfile(String uid);
+
+  /// Submits a verification badge request for admin review.
+  Future<Either<Failure, void>> submitVerificationRequest({
+    required String uid,
+    required String name,
+    String? reraNumber,
+    String? mobile,
+  });
 }

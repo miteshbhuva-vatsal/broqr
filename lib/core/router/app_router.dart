@@ -8,7 +8,9 @@ import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/auth/presentation/screens/splash_screen.dart';
 import 'package:cpapp/features/auth/presentation/screens/login_screen.dart';
 import 'package:cpapp/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:cpapp/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:cpapp/features/profile/presentation/screens/profile_setup_screen.dart';
+import 'package:cpapp/features/settings/presentation/screens/language_screen.dart';
 import 'package:cpapp/shared/widgets/shell_scaffold.dart';
 import 'package:cpapp/features/feed/presentation/screens/feed_screen.dart';
 import 'package:cpapp/features/crm/presentation/screens/crm_screen.dart';
@@ -163,6 +165,20 @@ GoRouter appRouter(Ref ref) {
         path: Routes.profile,
         name: 'profile',
         builder: (_, __) => const ProfileScreen(),
+      ),
+
+      // ── Edit Profile (full-screen, outside shell) ─────────────────────
+      GoRoute(
+        path: Routes.editProfile,
+        name: 'editProfile',
+        builder: (_, __) => const EditProfileScreen(),
+      ),
+
+      // ── Language selection (full-screen, outside shell) ───────────────
+      GoRoute(
+        path: Routes.language,
+        name: 'language',
+        builder: (_, __) => const LanguageScreen(),
       ),
 
       // ── My Listings (full-screen, outside shell) ──────────────────────

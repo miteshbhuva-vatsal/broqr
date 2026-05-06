@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/broker_network/domain/entities/broker_profile.dart';
 import 'package:cpapp/features/broker_network/domain/entities/connection.dart';
@@ -61,9 +62,9 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> {
       appBar: AppBar(
         backgroundColor: _navy,
         foregroundColor: Colors.white,
-        title: const Text(
-          'Network',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          AppLocalizations.of(context).networkTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         bottom: PreferredSize(
@@ -90,29 +91,20 @@ class _TabBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pendingCount = ref.watch(
-      networkProvider.select(
-        (s) => s.statusMap.values
-            .where((st) => st == ConnectionStatus.pendingReceived)
-            .length,
-      ),
-    );
-
+    final l = AppLocalizations.of(context);
     return Container(
       color: _navy,
       child: Row(
         children: [
           _Tab(
-            label: 'Discover',
+            label: l.discover,
             isSelected: selected == NetworkTab.discover,
             onTap: () => onTap(NetworkTab.discover),
-            badge: 0,
           ),
           _Tab(
-            label: 'Connections',
+            label: l.following,
             isSelected: selected == NetworkTab.connections,
             onTap: () => onTap(NetworkTab.connections),
-            badge: pendingCount,
           ),
         ],
       ),
@@ -125,13 +117,11 @@ class _Tab extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
-    required this.badge,
   });
 
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -161,25 +151,6 @@ class _Tab extends StatelessWidget {
                   fontSize: 14,
                 ),
               ),
-              if (badge > 0) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _gold,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '$badge',
-                    style: const TextStyle(
-                      color: _navy,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -203,15 +174,16 @@ class _DiscoverTab extends ConsumerWidget {
     }
 
     if (state.brokers.isEmpty) {
-      return const Center(
+      final l = AppLocalizations.of(context);
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey),
-            SizedBox(height: 12),
+            const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 12),
             Text(
-              'No brokers found',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              l.noBrokersFound,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
             ),
           ],
         ),
@@ -254,7 +226,7 @@ class _DiscoverTab extends ConsumerWidget {
 
   String? _connectionIdFor(String uid, NetworkState state) {
     for (final c in state.connections) {
-      if (c.participants.contains(uid)) return c.id;
+      if (c.followerId == uid || c.followingId == uid) return c.id;
     }
     return null;
   }
@@ -273,26 +245,24 @@ class _ConnectionsTab extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator(color: _navy));
     }
 
-    final connected =
-        state.connections.where((c) => c.status == 'connected').toList();
-    final pending =
-        state.connections.where((c) => c.status == 'pending').toList();
+    final following = state.connections;
 
-    if (connected.isEmpty && pending.isEmpty) {
-      return const Center(
+    if (following.isEmpty) {
+      final l = AppLocalizations.of(context);
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.handshake_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 12),
+            const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 12),
             Text(
-              'No connections yet',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              l.noFollowingYet,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'Discover brokers and start connecting',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              l.discoverAndFollow,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ],
         ),
@@ -307,39 +277,20 @@ class _ConnectionsTab extends ConsumerWidget {
       onRefresh: () => ref.read(networkProvider.notifier).refresh(),
       child: CustomScrollView(
         slivers: [
-          if (pending.isNotEmpty) ...[
-            const _SectionHeader(title: 'PENDING REQUESTS'),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => _ConnectionTile(
-                  connection: pending[i],
-                  myUid: myUid,
-                  brokers: state.brokers,
-                  onTap: (uid) => context.push(
-                    Routes.brokerProfile.replaceFirst(':brokerId', uid),
-                  ),
+          _SectionHeader(title: AppLocalizations.of(context).followingHeader),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => _ConnectionTile(
+                connection: following[i],
+                myUid: myUid,
+                brokers: state.brokers,
+                onTap: (uid) => context.push(
+                  Routes.brokerProfile.replaceFirst(':brokerId', uid),
                 ),
-                childCount: pending.length,
               ),
+              childCount: following.length,
             ),
-          ],
-          if (connected.isNotEmpty) ...[
-            const _SectionHeader(title: 'CONNECTED'),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => _ConnectionTile(
-                  connection: connected[i],
-                  myUid: myUid,
-                  brokers: state.brokers,
-                  isConnected: true,
-                  onTap: (uid) => context.push(
-                    Routes.brokerProfile.replaceFirst(':brokerId', uid),
-                  ),
-                ),
-                childCount: connected.length,
-              ),
-            ),
-          ],
+          ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
         ],
       ),
@@ -376,14 +327,12 @@ class _ConnectionTile extends StatelessWidget {
     required this.myUid,
     required this.brokers,
     required this.onTap,
-    this.isConnected = false,
   });
 
   final Connection connection;
   final String myUid;
   final List<BrokerProfile> brokers;
   final ValueChanged<String> onTap;
-  final bool isConnected;
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +351,7 @@ class _ConnectionTile extends StatelessWidget {
             connectionId: connection.id,
           ),
         ),
-        if (isConnected)
+        if (true)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: SizedBox(

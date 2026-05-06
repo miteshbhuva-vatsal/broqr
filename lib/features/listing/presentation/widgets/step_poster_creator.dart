@@ -7,7 +7,9 @@ import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
 import 'package:cpapp/features/listing/presentation/widgets/listing_poster_card.dart';
 
-/// Step 3 — Hero image upload + additional images + poster preview.
+const _kMaxAdditional = 9;
+
+/// Step 3 — Hero image upload + additional images (up to 9) + poster preview.
 class StepPosterCreator extends StatelessWidget {
   const StepPosterCreator({
     super.key,
@@ -20,7 +22,7 @@ class StepPosterCreator extends StatelessWidget {
     required this.heroImage,
     required this.additionalImages,
     required this.onHeroImagePicked,
-    required this.onAdditionalImagePicked,
+    required this.onAdditionalImagesPicked,
     required this.onRemoveAdditional,
     required this.posterKey,
   });
@@ -34,78 +36,64 @@ class StepPosterCreator extends StatelessWidget {
   final File? heroImage;
   final List<File> additionalImages;
   final ValueChanged<File> onHeroImagePicked;
-  final ValueChanged<File> onAdditionalImagePicked;
+  final ValueChanged<List<File>> onAdditionalImagesPicked;
   final ValueChanged<int> onRemoveAdditional;
   final GlobalKey posterKey;
 
-  Future<void> _pickImage(BuildContext context,
-      {required bool isHero,}) async {
+  Future<void> _pickHero(BuildContext context) async {
     final source = await _sourceSheet(context);
     if (source == null) return;
 
     if (source == ImageSource.camera) {
       final status = await Permission.camera.request();
       if (!status.isGranted) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                status.isPermanentlyDenied
-                    ? 'Camera permission denied. Enable it in Settings.'
-                    : 'Camera permission is required to take a photo.',
-              ),
-              action: status.isPermanentlyDenied
-                  ? const SnackBarAction(
-                      label: 'Settings',
-                      onPressed: openAppSettings,
-                    )
-                  : null,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        if (context.mounted) _showPermissionSnack(context, 'Camera');
         return;
       }
     } else {
-      // Gallery: API 33+ uses system photo picker (no permission needed).
-      // For API ≤ 32, request READ_EXTERNAL_STORAGE.
       final status = await Permission.photos.request();
       if (!status.isGranted && !status.isLimited) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                status.isPermanentlyDenied
-                    ? 'Gallery permission denied. Enable it in Settings.'
-                    : 'Gallery permission is required to pick a photo.',
-              ),
-              action: status.isPermanentlyDenied
-                  ? const SnackBarAction(
-                      label: 'Settings',
-                      onPressed: openAppSettings,
-                    )
-                  : null,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        if (context.mounted) _showPermissionSnack(context, 'Gallery');
         return;
       }
     }
 
-    // 75 quality @ 900 px ≈ 55 % smaller upload than 85/1080 with no visible quality loss
     final picked = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 75,
-      maxWidth: 900,
+      imageQuality: 100,
+      maxWidth: 1920,
     );
     if (picked == null) return;
-    final file = File(picked.path);
-    if (isHero) {
-      onHeroImagePicked(file);
-    } else {
-      onAdditionalImagePicked(file);
+    onHeroImagePicked(File(picked.path));
+  }
+
+  Future<void> _pickAdditional(BuildContext context) async {
+    final remaining = _kMaxAdditional - additionalImages.length;
+    if (remaining <= 0) return;
+
+    final status = await Permission.photos.request();
+    if (!status.isGranted && !status.isLimited) {
+      if (context.mounted) _showPermissionSnack(context, 'Gallery');
+      return;
     }
+
+    final picked = await ImagePicker().pickMultiImage(
+      imageQuality: 100,
+      maxWidth: 1920,
+      limit: remaining,
+    );
+    if (picked.isEmpty) return;
+    onAdditionalImagesPicked(picked.map((x) => File(x.path)).toList());
+  }
+
+  void _showPermissionSnack(BuildContext context, String type) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$type permission denied. Enable it in Settings.'),
+        action: const SnackBarAction(label: 'Settings', onPressed: openAppSettings),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<ImageSource?> _sourceSheet(BuildContext context) =>
@@ -143,6 +131,7 @@ class StepPosterCreator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final remaining = _kMaxAdditional - additionalImages.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +144,7 @@ class StepPosterCreator extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Upload a property photo — we\'ll auto-generate a shareable poster.',
+          'Upload photos — we\'ll auto-generate a shareable poster.',
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -166,7 +155,7 @@ class StepPosterCreator extends StatelessWidget {
         const _SectionLabel('Hero Image', subtitle: 'Required · Main photo shown on poster'),
         const SizedBox(height: 10),
         GestureDetector(
-          onTap: () => _pickImage(context, isHero: true),
+          onTap: () => _pickHero(context),
           child: Container(
             height: 160,
             width: double.infinity,
@@ -178,9 +167,6 @@ class StepPosterCreator extends StatelessWidget {
                     ? AppColors.gold.withValues(alpha: 0.5)
                     : AppColors.border,
                 width: heroImage == null ? 2 : 1,
-                style: heroImage == null
-                    ? BorderStyle.solid
-                    : BorderStyle.solid,
               ),
             ),
             child: heroImage != null
@@ -194,7 +180,7 @@ class StepPosterCreator extends StatelessWidget {
                           top: 8,
                           right: 8,
                           child: GestureDetector(
-                            onTap: () => _pickImage(context, isHero: true),
+                            onTap: () => _pickHero(context),
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
@@ -240,7 +226,7 @@ class StepPosterCreator extends StatelessWidget {
         // ── Additional images ──────────────────────────────────────────
         _SectionLabel(
           'Additional Photos',
-          subtitle: 'Optional · Up to 4 more (${additionalImages.length}/4)',
+          subtitle: 'Optional · ${additionalImages.length}/$_kMaxAdditional · select multiple at once',
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -248,21 +234,31 @@ class StepPosterCreator extends StatelessWidget {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              if (additionalImages.length < 4)
+              if (remaining > 0)
                 GestureDetector(
-                  onTap: () => _pickImage(context, isHero: false),
+                  onTap: () => _pickAdditional(context),
                   child: Container(
                     width: 84,
                     margin: const EdgeInsets.only(right: 10),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.surfaceDark
-                          : AppColors.surfaceLight,
+                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.border),
                     ),
-                    child: const Icon(Icons.add_rounded,
-                        color: AppColors.textSecondary,),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.add_photo_alternate_outlined,
+                            color: AppColors.textSecondary, size: 22,),
+                        const SizedBox(height: 4),
+                        Text(
+                          '+$remaining',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textHint,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ...List.generate(additionalImages.length, (i) {
