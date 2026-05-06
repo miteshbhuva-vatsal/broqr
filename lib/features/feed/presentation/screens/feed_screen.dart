@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/l10n/locale_provider.dart';
 import 'package:cpapp/core/providers/city_preference_provider.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
@@ -60,6 +61,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         notification.metrics.maxScrollExtent - 300) {
       ref.read(feedProvider.notifier).loadMore();
     }
+  }
+
+  void _showLanguagePicker() {
+    final current = ref.read(localeProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _LanguagePickerSheet(current: current),
+    );
   }
 
   void _openFilterSheet() {
@@ -181,6 +191,16 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 ],
               ),
               actions: [
+                // Language switcher
+                IconButton(
+                  icon: Icon(
+                    Icons.translate_rounded,
+                    color: isDark ? AppColors.white : AppColors.navyDark,
+                    size: 22,
+                  ),
+                  onPressed: _showLanguagePicker,
+                  tooltip: 'Language',
+                ),
                 // Profile
                 IconButton(
                   icon: Icon(
@@ -283,6 +303,128 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             onRefresh: () => ref.read(feedProvider.notifier).refresh(),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Language picker sheet ─────────────────────────────────────────────────────
+
+class _LanguagePickerSheet extends ConsumerWidget {
+  const _LanguagePickerSheet({required this.current});
+  final Locale current;
+
+  static const _langs = [
+    (Locale('en'), 'English', 'EN'),
+    (Locale('hi'), 'हिन्दी', 'HI'),
+    (Locale('gu'), 'ગુજરાતી', 'GU'),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final locale = ref.watch(localeProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.navyMid : AppColors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        top: 16,
+        left: 24,
+        right: 24,
+        bottom: MediaQuery.of(context).padding.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Language',
+              style: AppTypography.titleSmall.copyWith(
+                color: isDark ? AppColors.white : AppColors.navyDark,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ..._langs.map((entry) {
+            final (loc, name, code) = entry;
+            final selected = locale.languageCode == loc.languageCode;
+            return GestureDetector(
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(loc);
+                Navigator.of(context).pop();
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.gold.withValues(alpha: 0.12)
+                      : (isDark ? AppColors.surfaceDark : AppColors.offWhite),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected ? AppColors.gold : AppColors.border,
+                    width: selected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.gold
+                            : (isDark ? AppColors.navyLight : AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          code,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: selected
+                                ? AppColors.navyDark
+                                : AppColors.textSecondary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      name,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: selected
+                            ? (isDark ? AppColors.white : AppColors.navyDark)
+                            : AppColors.textSecondary,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (selected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppColors.gold, size: 20,),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
