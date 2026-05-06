@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,6 +22,8 @@ import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
 import 'package:cpapp/features/crm/presentation/widgets/listing_leads_sheet.dart';
 import 'package:cpapp/features/crm/presentation/screens/lead_detail_screen.dart';
+import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
+import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ListingDetailScreen extends ConsumerStatefulWidget {
@@ -143,6 +146,21 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (_) {}
+
+    // Notify the listing owner (fire-and-forget; skip if user is the owner)
+    if (user.uid != l.brokerUid) {
+      unawaited(
+        ref.read(notificationRemoteDataSourceProvider).createNotification(
+          recipientUid: l.brokerUid,
+          type: NotificationType.listingInquiry,
+          title: 'New inquiry on your listing',
+          body: '${user.name} is interested in your ${l.category.label} in ${l.city}',
+          actorUid: user.uid,
+          targetId: l.id,
+        ),
+      );
+    }
+
     if (mounted) {
       setState(() => _phoneRevealed = true);
       if (l.brokerPhone == null || l.brokerPhone!.isEmpty) {

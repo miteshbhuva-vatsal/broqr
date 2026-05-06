@@ -4,6 +4,8 @@ enum NotificationType {
   connectionRequest,
   connectionAccepted,
   listingInquiry,
+  newListing,
+  reminderDue,
   general;
 
   static NotificationType fromString(String? v) {
@@ -14,6 +16,10 @@ enum NotificationType {
         return NotificationType.connectionAccepted;
       case 'listing_inquiry':
         return NotificationType.listingInquiry;
+      case 'new_listing':
+        return NotificationType.newListing;
+      case 'reminder_due':
+        return NotificationType.reminderDue;
       default:
         return NotificationType.general;
     }
@@ -27,6 +33,10 @@ enum NotificationType {
         return 'connection_accepted';
       case NotificationType.listingInquiry:
         return 'listing_inquiry';
+      case NotificationType.newListing:
+        return 'new_listing';
+      case NotificationType.reminderDue:
+        return 'reminder_due';
       case NotificationType.general:
         return 'general';
     }

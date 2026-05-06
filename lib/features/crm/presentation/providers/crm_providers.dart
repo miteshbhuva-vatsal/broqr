@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:cpapp/core/services/reminder_notification_service.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/crm/data/datasources/crm_remote_datasource.dart';
 import 'package:cpapp/features/crm/data/repositories/crm_repository_impl.dart';
@@ -260,6 +261,26 @@ class Crm extends _$Crm {
         clearReminderNote: reminderNote == null,
       ),
     );
+
+    // Schedule or cancel the local 1-hour-early notification
+    if (reminderAt != null) {
+      final lead = state.leads.firstWhere(
+        (l) => l.id == leadId,
+        orElse: () => Lead(
+          id: leadId, ownerUid: '', clientName: '', stage: LeadStage.newLead,
+          priority: LeadPriority.medium, notes: const [], createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      ReminderNotificationService.schedule(
+        leadId: leadId,
+        clientName: lead.clientName,
+        reminderAt: reminderAt,
+      );
+    } else {
+      ReminderNotificationService.cancel(leadId);
+    }
+
     final result = await ref.read(crmRepositoryProvider).setReminder(
           leadId: leadId,
           reminderAt: reminderAt,

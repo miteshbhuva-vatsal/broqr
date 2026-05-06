@@ -9,6 +9,7 @@ import 'package:cpapp/core/l10n/locale_provider.dart';
 import 'package:cpapp/core/router/app_router.dart';
 import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/core/services/fcm_service.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'package:cpapp/core/services/firebase_service.dart';
 import 'package:cpapp/core/services/analytics_service.dart';
 import 'package:cpapp/core/services/referral_service.dart';
@@ -42,6 +43,9 @@ Future<void> main() async {
 
   // Initialise Firebase
   await FirebaseService.init();
+
+  // Initialise timezone database (required for zonedSchedule local notifications)
+  tz.initializeTimeZones();
 
   // Initialise FCM (channel, local notifications, background handler)
   await FcmService.init();

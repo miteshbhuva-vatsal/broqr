@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:cpapp/core/constants/app_constants.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
+import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
+import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:cpapp/features/listing/data/datasources/listing_remote_datasource.dart';
 import 'package:cpapp/features/listing/data/models/listing_model.dart';
 import 'package:cpapp/features/listing/data/repositories/listing_repository_impl.dart';
@@ -247,8 +252,34 @@ class AddListing extends _$AddListing {
         }
         state = state.copyWith(
             isSubmitting: false, clearProgress: true, publishedListing: listing,);
+
+        // Fan-out: notify everyone who follows this broker
+        unawaited(_notifyFollowers(user, listing));
       },
     );
+  }
+
+  Future<void> _notifyFollowers(dynamic user, Listing listing) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(AppConstants.connectionsCollection)
+          .where('followingId', isEqualTo: user.uid as String)
+          .get();
+      if (snap.docs.isEmpty) return;
+      final notifDs = ref.read(notificationRemoteDataSourceProvider);
+      for (final doc in snap.docs) {
+        final followerUid = doc.data()['followerId'] as String?;
+        if (followerUid == null) continue;
+        unawaited(notifDs.createNotification(
+          recipientUid: followerUid,
+          type: NotificationType.newListing,
+          title: 'New listing by ${user.name as String}',
+          body: '${listing.category.label} in ${listing.city} · ${listing.priceLabel}',
+          actorUid: user.uid as String,
+          targetId: listing.id,
+        ),);
+      }
+    } catch (_) {}
   }
 
   void reset() => state = const AddListingFormState();

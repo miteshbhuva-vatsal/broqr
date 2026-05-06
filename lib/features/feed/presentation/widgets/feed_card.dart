@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
+import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
@@ -125,6 +127,20 @@ class _FeedCardState extends ConsumerState<FeedCard> {
       });
     } catch (_) {
       // Don't block phone reveal if lead creation fails
+    }
+
+    // Notify the listing owner (fire-and-forget; skip if user is the owner)
+    if (user.uid != listing.brokerUid) {
+      unawaited(
+        ref.read(notificationRemoteDataSourceProvider).createNotification(
+          recipientUid: listing.brokerUid,
+          type: NotificationType.listingInquiry,
+          title: 'New inquiry on your listing',
+          body: '${user.name} is interested in your ${listing.category.label} in ${listing.city}',
+          actorUid: user.uid,
+          targetId: listing.id,
+        ),
+      );
     }
 
     if (mounted) {
