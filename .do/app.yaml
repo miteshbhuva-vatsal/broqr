@@ -1,0 +1,45 @@
+name: cpapp-admin
+region: blr
+services:
+  - name: admin
+    source_dir: admin
+    dockerfile_path: admin/Dockerfile
+    github:
+      repo: miteshbhuva-vatsal/broqr
+      branch: main
+      deploy_on_push: true
+    http_port: 3001
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        value: AIzaSyCs1uz_dfod3gh0I9m2hpUVcxUhOIBV6XQ
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        value: cpapp-ace05.firebaseapp.com
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        value: cpapp-ace05
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        value: cpapp-ace05.firebasestorage.app
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        value: "809612402395"
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        value: "1:809612402395:web:48c6ceb41f49c3ed07b6fe"
+      - key: FIREBASE_PROJECT_ID
+        value: cpapp-ace05
+      - key: FIREBASE_CLIENT_EMAIL
+        value: firebase-adminsdk-fbsvc@cpapp-ace05.iam.gserviceaccount.com
+      - key: FIREBASE_PRIVATE_KEY
+        value: "YOUR_FIREBASE_PRIVATE_KEY"
+        type: SECRET
+      - key: SESSION_SECRET
+        value: "YOUR_SESSION_SECRET"
+        type: SECRET
+      - key: MSG91_AUTH_KEY
+        value: "YOUR_MSG91_AUTH_KEY"
+        type: SECRET
+      - key: MSG91_TEMPLATE_ID
+        value: 63f496b4d6fc05175452ebf4
+      - key: MSG91_SENDER_ID
+        value: DGPROP

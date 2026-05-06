@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
+import { adminDb } from '@/lib/firebase-admin'
 import { apiError } from '@/lib/utils'
-
-const AUTH_KEY = process.env.MSG91_AUTH_KEY!
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
@@ -14,26 +13,24 @@ export async function POST(req: NextRequest) {
     return apiError('Enter the 6-digit OTP', 400)
   }
 
-  if (!AUTH_KEY) {
-    return apiError('MSG91 not configured', 500)
+  const doc = await adminDb().collection('otpVerifications').doc(mobile).get()
+
+  if (!doc.exists) {
+    return apiError('OTP expired or not requested. Please resend.', 400)
   }
 
-  const url = `https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=91${mobile}`
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { authkey: AUTH_KEY },
-  })
+  const { otp: stored, expiresAt } = doc.data() as { otp: string; expiresAt: number }
 
-  const data = await res.json().catch(() => ({ type: 'error' }))
-
-  if (data.type === 'success') {
-    return Response.json({ ok: true })
+  if (Date.now() > expiresAt) {
+    await adminDb().collection('otpVerifications').doc(mobile).delete()
+    return apiError('OTP has expired. Please request a new one.', 400)
   }
 
-  return apiError(
-    data.message?.toLowerCase().includes('not match')
-      ? 'Incorrect OTP. Please try again.'
-      : (data.message ?? 'OTP verification failed.'),
-    400,
-  )
+  if (otp !== stored) {
+    return apiError('Incorrect OTP. Please try again.', 400)
+  }
+
+  // Verified — delete so it can't be reused
+  await adminDb().collection('otpVerifications').doc(mobile).delete()
+  return Response.json({ ok: true })
 }
