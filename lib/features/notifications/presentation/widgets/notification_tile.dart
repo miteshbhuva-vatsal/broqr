@@ -117,6 +117,8 @@ class _TypeIcon extends StatelessWidget {
       NotificationType.connectionAccepted =>
         (Icons.handshake_outlined, Colors.green),
       NotificationType.listingInquiry => (Icons.chat_bubble_outline, _gold),
+      NotificationType.newListing => (Icons.home_work_outlined, _gold),
+      NotificationType.reminderDue => (Icons.alarm_outlined, Colors.orange),
       NotificationType.general => (Icons.notifications_outlined, Colors.grey),
     };
 

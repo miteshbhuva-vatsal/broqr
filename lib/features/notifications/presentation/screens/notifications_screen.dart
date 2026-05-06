@@ -146,6 +146,14 @@ class _NotificationsBody extends ConsumerWidget {
         context.go(Routes.network);
 
       case NotificationType.listingInquiry:
+      case NotificationType.newListing:
+        if (notif.targetId != null) {
+          context.push(Routes.listingDetail.replaceFirst(':listingId', notif.targetId!));
+        } else {
+          context.go(Routes.feed);
+        }
+
+      case NotificationType.reminderDue:
         context.go(Routes.crm);
 
       case NotificationType.general:
