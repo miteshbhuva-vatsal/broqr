@@ -419,6 +419,20 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                           ),
                           if (listing.posterRole != null)
                             _RoleBadge(role: listing.posterRole!),
+                          if (_phoneRevealed &&
+                              listing.brokerPhone != null &&
+                              listing.brokerPhone!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 3),
+                              child: Text(
+                                '+91 ${listing.brokerPhone}',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -584,11 +598,7 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            _phoneRevealed
-                                ? (listing.brokerPhone?.isNotEmpty == true
-                                    ? '+91 ${listing.brokerPhone}'
-                                    : 'No number')
-                                : l.inquiry,
+                            l.inquiry,
                             style: AppTypography.labelSmall.copyWith(
                               color: _phoneRevealed
                                   ? AppColors.success

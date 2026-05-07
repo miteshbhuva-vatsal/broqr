@@ -27,6 +27,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
   LeadStage _stage = LeadStage.newLead;
   LeadPriority _priority = LeadPriority.medium;
   bool _isSaving = false;
+  String? _saveError;
 
   @override
   void initState() {
@@ -47,7 +48,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
+    setState(() { _isSaving = true; _saveError = null; });
 
     final listing = widget.fromListing;
     final success = await ref.read(crmProvider.notifier).createLead(
@@ -65,19 +66,21 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
           linkedListingPrice: listing?.priceLabel,
         );
 
+    if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (mounted) {
+    if (success) {
       Navigator.pop(context);
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).leadAddedToPipeline),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).leadAddedToPipeline),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      final err = ref.read(crmProvider).error;
+      setState(() => _saveError = err ?? 'Failed to save lead. Please try again.');
     }
   }
 
@@ -234,6 +237,30 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                   isDark: isDark,
                 ),
                 const SizedBox(height: 28),
+
+                if (_saveError != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _saveError!,
+                            style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // Save button
                 SizedBox(

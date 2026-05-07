@@ -675,11 +675,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                             const SizedBox(width: 8),
                             Builder(
                               builder: (ctx) => Text(
-                                _phoneRevealed
-                                    ? (listing.brokerPhone?.isNotEmpty == true
-                                        ? '+91 ${listing.brokerPhone}'
-                                        : AppLocalizations.of(ctx).noNumber)
-                                    : AppLocalizations.of(ctx).contactLeadOwner,
+                                AppLocalizations.of(ctx).contactLeadOwner,
                                 style: AppTypography.labelMedium.copyWith(
                                   color: _phoneRevealed
                                       ? AppColors.success
@@ -1112,11 +1108,7 @@ class _BrokerCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    phoneRevealed
-                        ? (hasPhone
-                            ? '${AppLocalizations.of(context).callNumber} +91 ${listing.brokerPhone}'
-                            : AppLocalizations.of(context).noNumber)
-                        : AppLocalizations.of(context).contactLeadOwner,
+                    AppLocalizations.of(context).contactLeadOwner,
                     style: AppTypography.labelMedium.copyWith(
                       color: phoneRevealed
                           ? AppColors.success
