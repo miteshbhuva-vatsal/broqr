@@ -6,6 +6,8 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+# Ensure public/ exists (Next.js standalone requires it even if empty)
+RUN mkdir -p public
 RUN npm run build
 
 # ── Stage 2: Production server ──────────────────────────────────────────────
