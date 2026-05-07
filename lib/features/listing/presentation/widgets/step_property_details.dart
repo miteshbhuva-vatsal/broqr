@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart' show AreaUnit, ListingVisibility;
@@ -112,6 +113,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
 
     return Form(
       key: widget.formKey,
@@ -150,21 +152,21 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Property Details',
+            l.propertyDetails,
             style: AppTypography.headlineSmall.copyWith(
               color: isDark ? AppColors.white : AppColors.navyDark,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Fill in the details brokers need to evaluate your deal.',
+            l.fillDetailsDesc,
             style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textSecondary,),
           ),
           const SizedBox(height: 24),
 
           // Project / Scheme title (optional)
-          const _Label('Project / Scheme Name', required: false),
+          _Label(l.projectSchemeName, required: false),
           const SizedBox(height: 6),
           TextFormField(
             controller: _titleCtrl,
@@ -179,7 +181,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 16),
 
           // City picker
-          const _Label('City', required: true),
+          _Label(l.cityRequired, required: true),
           const SizedBox(height: 6),
           GestureDetector(
             onTap: _pickCity,
@@ -201,7 +203,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      widget.city.isEmpty ? 'Select city' : widget.city,
+                      widget.city.isEmpty ? l.selectCityHint : widget.city,
                       style: AppTypography.bodyMedium.copyWith(
                         color: widget.city.isEmpty
                             ? AppColors.textHint
@@ -220,7 +222,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 16),
 
           // Property type
-          const _Label('Property Type', required: false),
+          _Label(l.propertyType, required: false),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -280,7 +282,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 16),
 
           // Location / Society name
-          const _Label('Location / Society', required: true),
+          _Label(l.locationSociety, required: true),
           const SizedBox(height: 6),
           TextFormField(
             controller: _locationCtrl,
@@ -288,7 +290,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
             validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Location is required' : null,
+                (v == null || v.trim().isEmpty) ? l.locationRequired : null,
             decoration: const InputDecoration(
               hintText: 'e.g. Andheri West, Oberoi Springs',
               prefixIcon:
@@ -298,7 +300,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 16),
 
           // Area — number field + unit picker
-          const _Label('Area', required: true),
+          _Label(l.area, required: true),
           const SizedBox(height: 6),
           TextFormField(
             controller: _areaCtrl,
@@ -307,7 +309,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
             textInputAction: TextInputAction.next,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Area is required' : null,
+                (v == null || v.trim().isEmpty) ? l.areaRequired : null,
             decoration: const InputDecoration(
               hintText: '1200',
               prefixIcon: Icon(Icons.straighten_rounded, size: 20),
@@ -374,7 +376,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Label('Market Price / MRP', required: false),
+                    _Label(l.marketPriceMrp, required: false),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _originalPriceCtrl,
@@ -388,7 +390,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                         prefixStyle: TextStyle(
                           color: isDark ? AppColors.white : AppColors.textPrimary,
                         ),
-                        helperText: 'Optional',
+                        helperText: l.optionalLabel,
                         helperStyle: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textHint,
@@ -404,7 +406,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Label('Deal Price (₹)', required: true),
+                    _Label(l.dealPrice, required: true),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _priceCtrl,
@@ -413,7 +415,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                       textInputAction: TextInputAction.next,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Required'
+                          ? l.requiredLabel
                           : null,
                       decoration: InputDecoration(
                         hintText: '7500000',
@@ -421,7 +423,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
                         prefixStyle: TextStyle(
                           color: isDark ? AppColors.white : AppColors.textPrimary,
                         ),
-                        helperText: 'Asking price',
+                        helperText: l.askingPrice,
                         helperStyle: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textHint,
@@ -436,7 +438,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 16),
 
           // Brokerage (optional)
-          const _Label('Brokerage', required: false),
+          _Label(l.brokerage, required: false),
           const SizedBox(height: 6),
           TextFormField(
             controller: _brokerageCtrl,
@@ -451,7 +453,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 16),
 
           // Description (optional)
-          const _Label('Description', required: false),
+          _Label(l.description, required: false),
           const SizedBox(height: 6),
           TextFormField(
             controller: _descCtrl,
@@ -459,16 +461,15 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
             maxLines: 3,
             maxLength: 500,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText:
-                  'Add any extra details — possession, floor, facing, amenities…',
+            decoration: InputDecoration(
+              hintText: l.descriptionHint,
               alignLabelWithHint: true,
             ),
           ),
           const SizedBox(height: 24),
 
           // Visibility picker
-          const _Label('Who can see this?', required: false),
+          _Label(l.whoCanSee, required: false),
           const SizedBox(height: 10),
           _VisibilityPicker(
             selected: widget.visibility,
@@ -494,6 +495,7 @@ class _PricePairHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -507,7 +509,7 @@ class _PricePairHint extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Set Market Price to show a strikethrough and savings badge on your listing.',
+              l.priceStrikethroughHint,
               style: AppTypography.bodySmall.copyWith(
                 color: isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary,
                 fontSize: 11,

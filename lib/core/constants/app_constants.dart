@@ -58,5 +58,5 @@ abstract final class AppConstants {
   // Release: deployed DigitalOcean URL (updated once DO deploy completes)
   static String get apiBaseUrl => kDebugMode
       ? 'http://10.0.2.2:3001'
-      : 'https://cpapp-admin-5bcug.ondigitalocean.app';
+      : 'https://cpapp-admin-ouzg8.ondigitalocean.app';
 }

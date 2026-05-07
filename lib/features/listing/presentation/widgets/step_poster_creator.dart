@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
@@ -47,13 +48,13 @@ class StepPosterCreator extends StatelessWidget {
     if (source == ImageSource.camera) {
       final status = await Permission.camera.request();
       if (!status.isGranted) {
-        if (context.mounted) _showPermissionSnack(context, 'Camera');
+        if (context.mounted) _showPermissionSnack(context, AppLocalizations.of(context).cameraLabel);
         return;
       }
     } else {
       final status = await Permission.photos.request();
       if (!status.isGranted && !status.isLimited) {
-        if (context.mounted) _showPermissionSnack(context, 'Gallery');
+        if (context.mounted) _showPermissionSnack(context, AppLocalizations.of(context).galleryLabel);
         return;
       }
     }
@@ -73,7 +74,7 @@ class StepPosterCreator extends StatelessWidget {
 
     final status = await Permission.photos.request();
     if (!status.isGranted && !status.isLimited) {
-      if (context.mounted) _showPermissionSnack(context, 'Gallery');
+      if (context.mounted) _showPermissionSnack(context, AppLocalizations.of(context).galleryLabel);
       return;
     }
 
@@ -87,64 +88,68 @@ class StepPosterCreator extends StatelessWidget {
   }
 
   void _showPermissionSnack(BuildContext context, String type) {
+    final l = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$type permission denied. Enable it in Settings.'),
+        content: Text('$type ${l.permissionDeniedSettings}'),
         action: const SnackBarAction(label: 'Settings', onPressed: openAppSettings),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  Future<ImageSource?> _sourceSheet(BuildContext context) =>
-      showModalBottomSheet<ImageSource>(
-        context: context,
-        builder: (_) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+  Future<ImageSource?> _sourceSheet(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(height: 8),
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined),
-                title: const Text('Camera'),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Gallery'),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text(l.cameraLabel),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l.galleryLabel),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
     final remaining = _kMaxAdditional - additionalImages.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Create Your Poster',
+          l.createYourPoster,
           style: AppTypography.headlineSmall.copyWith(
             color: isDark ? AppColors.white : AppColors.navyDark,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          'Upload photos — we\'ll auto-generate a shareable poster.',
+          l.uploadPhotosDesc,
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -152,7 +157,7 @@ class StepPosterCreator extends StatelessWidget {
         const SizedBox(height: 24),
 
         // ── Hero image picker ──────────────────────────────────────────
-        const _SectionLabel('Hero Image', subtitle: 'Required · Main photo shown on poster'),
+        _SectionLabel(l.heroImageLabel, subtitle: l.heroImageSubtitle),
         const SizedBox(height: 10),
         GestureDetector(
           onTap: () => _pickHero(context),
@@ -209,12 +214,12 @@ class StepPosterCreator extends StatelessWidget {
                             color: AppColors.gold, size: 26,),
                       ),
                       const SizedBox(height: 10),
-                      Text('Tap to upload hero photo',
+                      Text(l.tapToUploadHeroPhoto,
                           style: AppTypography.labelMedium.copyWith(
                             color: AppColors.gold,
                           ),),
                       const SizedBox(height: 4),
-                      const Text('JPG or PNG · max 5MB',
+                      Text(l.jpgOrPng,
                           style: AppTypography.bodySmall,),
                     ],
                   ),
@@ -225,8 +230,8 @@ class StepPosterCreator extends StatelessWidget {
 
         // ── Additional images ──────────────────────────────────────────
         _SectionLabel(
-          'Additional Photos',
-          subtitle: 'Optional · ${additionalImages.length}/$_kMaxAdditional · select multiple at once',
+          l.additionalPhotos,
+          subtitle: '${l.optionalLabel} · ${additionalImages.length}/$_kMaxAdditional',
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -301,8 +306,7 @@ class StepPosterCreator extends StatelessWidget {
         // ── Poster preview ─────────────────────────────────────────────
         if (heroImage != null) ...[
           const SizedBox(height: 28),
-          const _SectionLabel('Poster Preview',
-              subtitle: 'This will be shared with your listing',),
+          _SectionLabel(l.posterPreview, subtitle: l.posterSharedWithListing),
           const SizedBox(height: 12),
           Center(
             child: RepaintBoundary(
@@ -321,7 +325,7 @@ class StepPosterCreator extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Auto-generated poster · editable in future updates',
+              l.autoGeneratedPoster,
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),

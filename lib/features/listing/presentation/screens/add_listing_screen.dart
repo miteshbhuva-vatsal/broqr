@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
@@ -31,7 +32,6 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _detailsFormKey = GlobalKey<FormState>();
   final _posterKey = GlobalKey(); // for RepaintBoundary capture
 
-  final _steps = ['Category', 'Details', 'Poster'];
 
   @override
   void dispose() {
@@ -58,14 +58,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   // ── Navigation ──────────────────────────────────────────────────────────
 
   void _next() {
+    final l = AppLocalizations.of(context);
     final state = ref.read(addListingProvider);
     if (state.step == 0 && !state.isStep1Valid) {
-      _showSnack('Please select a deal category.');
+      _showSnack(l.pleaseSelectCategory);
       return;
     }
     if (state.step == 1) {
       if (!_detailsFormKey.currentState!.validate() || state.city.isEmpty) {
-        if (state.city.isEmpty) _showSnack('Please select your city.');
+        if (state.city.isEmpty) _showSnack(l.pleaseSelectCity);
         return;
       }
     }
@@ -89,9 +90,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   Future<void> _publish() async {
+    final l = AppLocalizations.of(context);
     final state = ref.read(addListingProvider);
     if (!state.isStep3Valid) {
-      _showSnack('Please upload at least one hero photo.');
+      _showSnack(l.pleaseUploadHeroPhoto);
       return;
     }
     final posterBytes = await _capturePoster();
@@ -124,8 +126,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         ref.read(addListingProvider.notifier).reset();
         context.go(Routes.feed);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Listing published successfully!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).listingPublishedSuccess),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -136,6 +138,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       }
     });
 
+    final l = AppLocalizations.of(context);
+    final steps = [l.stepCategory, l.stepDetails, l.stepPoster];
     final isLastStep = formState.step == 2;
 
     return PopScope(
@@ -146,8 +150,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       child: LoadingOverlay(
         isLoading: formState.isSubmitting,
         message: formState.uploadProgress != null
-            ? 'Uploading photos… ${(formState.uploadProgress! * 100).round()}%'
-            : 'Publishing your listing…',
+            ? '${l.uploadingPhotos} ${(formState.uploadProgress! * 100).round()}%'
+            : l.publishingListing,
         progress: formState.uploadProgress,
         child: Scaffold(
           backgroundColor:
@@ -160,7 +164,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               onPressed: _back,
             ),
             title: Text(
-              'New Listing',
+              l.newListing,
               style: AppTypography.titleMedium.copyWith(
                 color: isDark ? AppColors.white : AppColors.navyDark,
               ),
@@ -168,7 +172,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(56),
               child: _StepIndicator(
-                steps: _steps,
+                steps: steps,
                 currentStep: formState.step,
               ),
             ),
@@ -286,7 +290,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 child: SafeArea(
                   top: false,
                   child: AppButton(
-                    label: isLastStep ? '🚀  Publish Listing' : 'Next →',
+                    label: isLastStep ? l.publishListing : l.nextArrow,
                     onPressed: formState.isSubmitting
                         ? null
                         : (isLastStep ? _publish : _next),

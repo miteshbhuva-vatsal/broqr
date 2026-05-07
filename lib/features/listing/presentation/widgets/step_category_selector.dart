@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
@@ -17,12 +18,13 @@ class StepCategorySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'What type of deal\nare you posting?',
+          l.whatTypeDealPosting,
           style: AppTypography.headlineSmall.copyWith(
             color: isDark ? AppColors.white : AppColors.navyDark,
             height: 1.2,
@@ -30,7 +32,7 @@ class StepCategorySelector extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose the category that best describes your listing.',
+          l.chooseCategoryDesc,
           style: AppTypography.bodyMedium.copyWith(
               color: AppColors.textSecondary,),
         ),
