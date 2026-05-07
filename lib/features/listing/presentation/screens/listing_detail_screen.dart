@@ -132,11 +132,13 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   Future<void> _doContact(Listing l) async {
     final user = ref.read(authStateChangesProvider).valueOrNull;
     if (user == null) return;
+
+    bool leadAdded = false;
     try {
       await FirebaseFirestore.instance.collection('leads').add({
         'ownerUid': l.brokerUid,
         'clientName': user.name,
-        'clientPhone': user.mobile ?? '',
+        'clientPhone': user.mobile?.isNotEmpty == true ? user.mobile : null,
         'stage': 'newLead',
         'priority': 'medium',
         'linkedListingId': l.id,
@@ -146,6 +148,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      leadAdded = true;
     } catch (_) {}
 
     // Notify the listing owner (fire-and-forget; skip if user is the owner)
@@ -164,14 +167,19 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
 
     if (mounted) {
       setState(() => _phoneRevealed = true);
-      if (l.brokerPhone == null || l.brokerPhone!.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).noBrokerPhone),
-            behavior: SnackBarBehavior.floating,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            leadAdded
+                ? '✅ Your inquiry has been sent to the broker!'
+                : (l.brokerPhone == null || l.brokerPhone!.isEmpty
+                    ? AppLocalizations.of(context).noBrokerPhone
+                    : '✅ Broker contact revealed below'),
           ),
-        );
-      }
+          backgroundColor: leadAdded ? AppColors.success : AppColors.navyMid,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

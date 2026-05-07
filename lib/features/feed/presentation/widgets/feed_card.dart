@@ -1,12 +1,9 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
-import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
@@ -19,7 +16,6 @@ import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/features/feed/presentation/providers/feed_providers.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
-import 'package:cpapp/shared/widgets/phone_otp_sheet.dart';
 
 // ignore: unused_import — kept for InquireSheet used in listing_detail_screen
 // import 'package:cpapp/features/feed/presentation/widgets/inquire_sheet.dart';
@@ -35,7 +31,6 @@ class FeedCard extends ConsumerStatefulWidget {
 
 class _FeedCardState extends ConsumerState<FeedCard> {
   Timer? _viewTimer;
-  bool _phoneRevealed = false;
 
   @override
   void initState() {
@@ -84,76 +79,10 @@ class _FeedCardState extends ConsumerState<FeedCard> {
     }
   }
 
-  Future<void> _onContactTap() async {
-    final user = ref.read(authStateChangesProvider).valueOrNull;
-    if (user == null) return;
-
-    final isVerified = ref.read(isPhoneVerifiedProvider);
-    if (isVerified) {
-      await _doContact();
-    } else {
-      if (!mounted) return;
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => PhoneOtpSheet(
-          initialPhone: user.mobile,
-          onVerified: () => Future.microtask(_doContact),
-        ),
-      );
-    }
-  }
-
-  Future<void> _doContact() async {
-    final listing = widget.listing;
-    final user = ref.read(authStateChangesProvider).valueOrNull;
-    if (user == null) return;
-
-    // Auto-add a lead in the broker's CRM representing this inquiry
-    try {
-      await FirebaseFirestore.instance.collection('leads').add({
-        'ownerUid': listing.brokerUid,
-        'clientName': user.name,
-        'clientPhone': user.mobile ?? '',
-        'stage': 'newLead',
-        'priority': 'medium',
-        'linkedListingId': listing.id,
-        'linkedListingCity': listing.city,
-        'linkedListingPrice': listing.priceLabel,
-        'notes': <Map<String, dynamic>>[],
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (_) {
-      // Don't block phone reveal if lead creation fails
-    }
-
-    // Notify the listing owner (fire-and-forget; skip if user is the owner)
-    if (user.uid != listing.brokerUid) {
-      unawaited(
-        ref.read(notificationRemoteDataSourceProvider).createNotification(
-          recipientUid: listing.brokerUid,
-          type: NotificationType.listingInquiry,
-          title: 'New inquiry on your listing',
-          body: '${user.name} is interested in your ${listing.category.label} in ${listing.city}',
-          actorUid: user.uid,
-          targetId: listing.id,
-        ),
-      );
-    }
-
-    if (mounted) {
-      setState(() => _phoneRevealed = true);
-      if (listing.brokerPhone == null || listing.brokerPhone!.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).noBrokerPhone),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+  void _goToDetail() {
+    context.push(
+      Routes.listingDetail.replaceFirst(':listingId', widget.listing.id),
+    );
   }
 
   @override
@@ -419,20 +348,6 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                           ),
                           if (listing.posterRole != null)
                             _RoleBadge(role: listing.posterRole!),
-                          if (_phoneRevealed &&
-                              listing.brokerPhone != null &&
-                              listing.brokerPhone!.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Text(
-                                '+91 ${listing.brokerPhone}',
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.success,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ),
@@ -565,44 +480,31 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                     onTap: _share,
                   ),
                   const SizedBox(width: 6),
-                  // Contact Lead Owner CTA
+                  // Inquiry → opens listing detail
                   GestureDetector(
-                    onTap: _phoneRevealed ? null : _onContactTap,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                    onTap: _goToDetail,
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: _phoneRevealed
-                            ? AppColors.success.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: _phoneRevealed
-                              ? AppColors.success
-                              : AppColors.gold,
-                          width: 1.2,
-                        ),
+                        border: Border.all(color: AppColors.gold, width: 1.2),
                         borderRadius: BorderRadius.circular(22),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.phone_outlined,
+                          const Icon(
+                            Icons.open_in_new_rounded,
                             size: 13,
-                            color: _phoneRevealed
-                                ? AppColors.success
-                                : AppColors.gold,
+                            color: AppColors.gold,
                           ),
                           const SizedBox(width: 5),
                           Text(
                             l.inquiry,
                             style: AppTypography.labelSmall.copyWith(
-                              color: _phoneRevealed
-                                  ? AppColors.success
-                                  : AppColors.gold,
+                              color: AppColors.gold,
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),

@@ -173,6 +173,9 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
+                  style: TextStyle(
+                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                  ),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? AppLocalizations.of(context).nameRequired
                       : null,
@@ -190,6 +193,9 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                   controller: _phoneCtrl,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
+                  style: TextStyle(
+                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
@@ -209,6 +215,9 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                   controller: _valueCtrl,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
+                  style: TextStyle(
+                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                  ),
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(
                     hintText: '7500000',
