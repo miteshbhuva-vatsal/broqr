@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
 import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
@@ -35,9 +36,9 @@ class NotificationsScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
         title: Row(
           children: [
-            const Text(
-              'Notifications',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context).notificationsTitle,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             if (state.unreadCount > 0) ...[
               const SizedBox(width: 8),
@@ -65,9 +66,9 @@ class NotificationsScreen extends ConsumerWidget {
             TextButton(
               onPressed: () =>
                   ref.read(notificationsProvider.notifier).markAllRead(),
-              child: const Text(
-                'Mark all read',
-                style: TextStyle(color: _gold, fontSize: 13),
+              child: Text(
+                AppLocalizations.of(context).markAllRead,
+                style: const TextStyle(color: _gold, fontSize: 13),
               ),
             ),
         ],
@@ -89,20 +90,21 @@ class _NotificationsBody extends ConsumerWidget {
     }
 
     if (state.notifications.isEmpty) {
-      return const Center(
+      final l = AppLocalizations.of(context);
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.notifications_none_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 12),
+            const Icon(Icons.notifications_none_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 12),
             Text(
-              'No notifications yet',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              l.noNotificationsYet,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'Connection requests and updates will appear here',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              l.notificationsSubtitle,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ],

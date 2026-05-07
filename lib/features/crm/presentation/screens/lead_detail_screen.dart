@@ -7,6 +7,7 @@ import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/feed/presentation/providers/feed_providers.dart';
 
@@ -65,23 +66,24 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
   }
 
   Future<void> _confirmDelete(Lead lead) async {
+    final l = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Lead?'),
+        title: Text(l.deleteLead),
         content: Text(
           'Remove ${lead.clientName} from your pipeline? This cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
+            child: Text(
+              l.done,
+              style: const TextStyle(color: AppColors.error),
             ),
           ),
         ],
@@ -215,7 +217,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                               Expanded(
                                 child: _ActionButton(
                                   icon: Icons.phone_outlined,
-                                  label: 'Call',
+                                  label: AppLocalizations.of(context).callNumber,
                                   color: AppColors.info,
                                   onTap: () => _callPhone(lead.clientPhone!),
                                   isDark: isDark,
@@ -244,7 +246,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                   const SizedBox(height: 16),
 
                   // ── Stage selector ─────────────────────────────────────
-                  _SectionTitle('Pipeline Stage', isDark: isDark),
+                  _SectionTitle(AppLocalizations.of(context).pipelineStage, isDark: isDark),
                   const SizedBox(height: 8),
                   _SectionCard(
                     isDark: isDark,
@@ -259,7 +261,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                   const SizedBox(height: 16),
 
                   // ── Priority selector ──────────────────────────────────
-                  _SectionTitle('Priority', isDark: isDark),
+                  _SectionTitle(AppLocalizations.of(context).priorityLabel, isDark: isDark),
                   const SizedBox(height: 8),
                   _SectionCard(
                     isDark: isDark,
@@ -327,7 +329,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                   // ── Linked listing ─────────────────────────────────────
                   if (lead.linkedListingCity != null || lead.linkedListingId != null) ...[
                     const SizedBox(height: 16),
-                    _SectionTitle('Linked Listing', isDark: isDark),
+                    _SectionTitle(AppLocalizations.of(context).linkedListing, isDark: isDark),
                     const SizedBox(height: 8),
                     Builder(
                       builder: (context) {
@@ -448,7 +450,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                   // ── Notes ──────────────────────────────────────────────
                   const SizedBox(height: 16),
                   _SectionTitle(
-                    'Notes (${lead.notes.length})',
+                    '${AppLocalizations.of(context).notes} (${lead.notes.length})',
                     isDark: isDark,
                   ),
                   const SizedBox(height: 8),
@@ -457,7 +459,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
-                        'No notes yet. Add one below.',
+                        AppLocalizations.of(context).noNotesYetHint,
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.textHint,
                         ),
@@ -508,7 +510,7 @@ class _LeadDetailScreenState extends ConsumerState<LeadDetailScreen> {
                       color: isDark ? AppColors.white : AppColors.textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Add a note…',
+                      hintText: AppLocalizations.of(context).addANote,
                       hintStyle: AppTypography.bodyMedium.copyWith(
                         color: AppColors.textHint,
                       ),
@@ -624,10 +626,11 @@ class _ReminderCard extends ConsumerWidget {
     String? note = lead.reminderNote;
     if (context.mounted) {
       final noteCtrl = TextEditingController(text: note);
+      final l2 = AppLocalizations.of(context);
       final result = await showDialog<String?>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Reminder Note (optional)'),
+          title: Text(l2.reminderNoteOptional),
           content: TextField(
             controller: noteCtrl,
             decoration: const InputDecoration(
@@ -639,11 +642,11 @@ class _ReminderCard extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Skip'),
+              child: Text(l2.skip),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, noteCtrl.text.trim()),
-              child: const Text('Save'),
+              child: Text(l2.save),
             ),
           ],
         ),
@@ -676,7 +679,7 @@ class _ReminderCard extends ConsumerWidget {
         Row(
           children: [
             Text(
-              'Follow-up Reminder',
+              AppLocalizations.of(context).followUpReminder,
               style: AppTypography.labelMedium.copyWith(
                 color: isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
@@ -688,7 +691,7 @@ class _ReminderCard extends ConsumerWidget {
               GestureDetector(
                 onTap: () => _clearReminder(ref),
                 child: Text(
-                  'Clear',
+                  AppLocalizations.of(context).clear,
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.error,
                     fontWeight: FontWeight.w600,
@@ -750,7 +753,7 @@ class _ReminderCard extends ConsumerWidget {
                             if (lead.isReminderOverdue) ...[
                               const SizedBox(height: 4),
                               Text(
-                                'OVERDUE',
+                                AppLocalizations.of(context).overdue.toUpperCase(),
                                 style: AppTypography.labelSmall.copyWith(
                                   color: AppColors.error,
                                   fontWeight: FontWeight.w800,
@@ -780,7 +783,7 @@ class _ReminderCard extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        'Set a follow-up reminder',
+                        AppLocalizations.of(context).setFollowUpReminder,
                         style: AppTypography.bodyMedium.copyWith(
                           color: isDark
                               ? AppColors.textOnDarkSecondary

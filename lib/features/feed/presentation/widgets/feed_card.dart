@@ -147,8 +147,8 @@ class _FeedCardState extends ConsumerState<FeedCard> {
       setState(() => _phoneRevealed = true);
       if (listing.brokerPhone == null || listing.brokerPhone!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Broker hasn't added a contact number yet"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).noBrokerPhone),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -718,14 +718,14 @@ class _FollowButton extends ConsumerWidget {
 
     if (status == ConnectionStatus.following) {
       return _chip(
-        label: 'Following',
+        label: AppLocalizations.of(context).followingBtn,
         icon: Icons.check_rounded,
         color: AppColors.success,
         onTap: null,
       );
     }
     return _chip(
-      label: 'Follow',
+      label: AppLocalizations.of(context).follow,
       icon: Icons.person_add_alt_1_rounded,
       color: AppColors.gold,
       onTap: () => ref.read(networkProvider.notifier).follow(brokerUid),
@@ -806,7 +806,9 @@ class _LeadsBadge extends ConsumerWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              hasLeads ? '$count ${count == 1 ? 'Lead' : 'Leads'}' : 'Leads',
+              hasLeads
+                ? '$count ${count == 1 ? AppLocalizations.of(context).lead : AppLocalizations.of(context).leads}'
+                : AppLocalizations.of(context).leads,
               style: TextStyle(
                 color: color,
                 fontSize: 11,

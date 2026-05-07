@@ -197,8 +197,7 @@ class _LanguagePicker extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _showPicker(context, ref),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
@@ -207,8 +206,11 @@ class _LanguagePicker extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.language_rounded,
-                color: AppColors.gold, size: 16,),
+            const Icon(
+              Icons.language_rounded,
+              color: AppColors.gold,
+              size: 16,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -218,8 +220,11 @@ class _LanguagePicker extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down_rounded,
-                color: AppColors.white, size: 16),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.white,
+              size: 16,
+            ),
           ],
         ),
       ),
@@ -279,40 +284,43 @@ class _LanguagePicker extends ConsumerWidget {
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.gold.withValues(alpha: 0.15)
                         : AppColors.surfaceDark,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected
-                          ? AppColors.gold
-                          : AppColors.borderDark,
+                      color: isSelected ? AppColors.gold : AppColors.borderDark,
                       width: isSelected ? 1.5 : 1,
                     ),
                   ),
                   child: Row(
                     children: [
-                      Text(flag,
-                          style: const TextStyle(fontSize: 22)),
+                      Text(
+                        flag,
+                        style: const TextStyle(fontSize: 22),
+                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           name,
                           style: AppTypography.labelLarge.copyWith(
-                            color: isSelected
-                                ? AppColors.gold
-                                : AppColors.white,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            color:
+                                isSelected ? AppColors.gold : AppColors.white,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
                       ),
                       if (isSelected)
-                        const Icon(Icons.check_circle_rounded,
-                            color: AppColors.gold, size: 20),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: AppColors.gold,
+                          size: 20,
+                        ),
                     ],
                   ),
                 ),
@@ -336,7 +344,8 @@ class _SocialDivider extends StatelessWidget {
     return Row(
       children: [
         const Expanded(
-            child: Divider(color: AppColors.borderDark, thickness: 1)),
+          child: Divider(color: AppColors.borderDark, thickness: 1),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
@@ -346,7 +355,8 @@ class _SocialDivider extends StatelessWidget {
           ),
         ),
         const Expanded(
-            child: Divider(color: AppColors.borderDark, thickness: 1)),
+          child: Divider(color: AppColors.borderDark, thickness: 1),
+        ),
       ],
     );
   }
@@ -376,18 +386,20 @@ class _SocialAuthButton extends StatelessWidget {
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.white),
+                  strokeWidth: 2,
+                  color: AppColors.white,
+                ),
               )
             : icon,
         label: Text(
           label,
-          style:
-              AppTypography.labelLarge.copyWith(color: AppColors.white),
+          style: AppTypography.labelLarge.copyWith(color: AppColors.white),
         ),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: AppColors.borderDark),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
@@ -402,13 +414,18 @@ class _GoogleIcon extends StatelessWidget {
       width: 22,
       height: 22,
       decoration: const BoxDecoration(
-          color: Colors.white, shape: BoxShape.circle),
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
       child: const Center(
-        child: Text('G',
-            style: TextStyle(
-                color: Color(0xFF4285F4),
-                fontWeight: FontWeight.w700,
-                fontSize: 13)),
+        child: Text(
+          'G',
+          style: TextStyle(
+            color: Color(0xFF4285F4),
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
@@ -422,13 +439,18 @@ class _FacebookIcon extends StatelessWidget {
       width: 22,
       height: 22,
       decoration: const BoxDecoration(
-          color: Color(0xFF1877F2), shape: BoxShape.circle),
+        color: Color(0xFF1877F2),
+        shape: BoxShape.circle,
+      ),
       child: const Center(
-        child: Text('f',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 14)),
+        child: Text(
+          'f',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }

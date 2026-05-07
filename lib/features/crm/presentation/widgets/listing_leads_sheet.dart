@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
@@ -58,7 +59,7 @@ class ListingLeadsSheet extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Leads',
+                        AppLocalizations.of(context).leads,
                         style: AppTypography.titleMedium.copyWith(
                           color: isDark ? AppColors.white : AppColors.navyDark,
                         ),
@@ -91,7 +92,7 @@ class ListingLeadsSheet extends ConsumerWidget {
                     );
                   },
                   icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text('Add Lead'),
+                  label: Text(AppLocalizations.of(context).addLead),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.gold,
                     textStyle: AppTypography.labelMedium.copyWith(
@@ -130,14 +131,14 @@ class ListingLeadsSheet extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'No leads yet',
+                          AppLocalizations.of(context).noLeads,
                           style: AppTypography.titleSmall.copyWith(
                             color: isDark ? AppColors.white : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Tap "Add Lead" to track interest in this property.',
+                          AppLocalizations.of(context).addLeadToTrack,
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textSecondary,
                           ),

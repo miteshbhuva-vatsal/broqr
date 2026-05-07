@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:cpapp/core/constants/indian_cities.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/providers/city_preference_provider.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
@@ -38,6 +39,12 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
   }
 
   Future<void> _detectGps() async {
+    // Capture localized strings before any async gap
+    final l = AppLocalizations.of(context);
+    final permMsg = l.gpsPermissionDenied;
+    final unknownMsg = l.couldNotDetermineCity;
+    final unavailMsg = l.gpsUnavailable;
+
     setState(() {
       _detecting = true;
       _gpsError = null;
@@ -52,7 +59,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         setState(() {
-          _gpsError = 'Location permission denied. Pick city manually.';
+          _gpsError = permMsg;
           _detecting = false;
         });
         return;
@@ -73,7 +80,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
 
       if (raw.isEmpty) {
         setState(() {
-          _gpsError = 'Could not determine city. Pick manually.';
+          _gpsError = unknownMsg;
           _detecting = false;
         });
         return;
@@ -91,7 +98,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
       });
     } catch (_) {
       setState(() {
-        _gpsError = 'GPS unavailable. Pick city manually.';
+        _gpsError = unavailMsg;
         _detecting = false;
       });
     }
@@ -144,7 +151,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your City',
+                      AppLocalizations.of(context).yourCity,
                       style: AppTypography.headlineSmall.copyWith(
                         color: isDark ? AppColors.white : AppColors.navyDark,
                       ),
@@ -183,7 +190,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
                             : const Icon(Icons.my_location_rounded,
                                 color: AppColors.gold, size: 18,),
                         label: Text(
-                          _detecting ? 'Detecting…' : 'Detect via GPS',
+                          _detecting ? '…' : AppLocalizations.of(context).detectViaGps,
                           style: AppTypography.labelMedium.copyWith(
                             color: AppColors.gold,
                           ),
@@ -226,7 +233,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
                               ),
                               const Spacer(),
                               Text(
-                                'Use this city',
+                                AppLocalizations.of(context).useThisCity,
                                 style: AppTypography.labelSmall.copyWith(
                                   color: AppColors.gold,
                                 ),
@@ -257,7 +264,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'OR SEARCH',
+                        AppLocalizations.of(context).orSearch.toUpperCase(),
                         style: AppTypography.labelSmall.copyWith(
                           color: AppColors.textHint,
                           fontSize: 10,
@@ -301,7 +308,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
                 child: _filtered.isEmpty
                     ? Center(
                         child: Text(
-                          'No cities found',
+                          AppLocalizations.of(context).noCitiesFound,
                           style: AppTypography.bodyMedium
                               .copyWith(color: AppColors.textSecondary),
                         ),
@@ -338,7 +345,7 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
                   child: TextButton(
                     onPressed: _skip,
                     child: Text(
-                      'Skip for now — show all cities',
+                      AppLocalizations.of(context).skipForNow,
                       style: AppTypography.labelMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),

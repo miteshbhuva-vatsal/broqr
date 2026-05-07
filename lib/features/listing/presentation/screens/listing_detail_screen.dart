@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/core/services/deep_link_service.dart';
@@ -98,7 +99,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not generate PDF: $e'),
+            content: Text('${AppLocalizations.of(context).couldNotLoadListings}: $e'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -165,8 +166,8 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
       setState(() => _phoneRevealed = true);
       if (l.brokerPhone == null || l.brokerPhone!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Broker hasn't added a contact number yet"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).noBrokerPhone),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -509,7 +510,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                       listing.description!.isNotEmpty) ...[
                     _SectionCard(
                       isDark: isDark,
-                      header: 'ABOUT THIS PROPERTY',
+                      header: AppLocalizations.of(context).aboutThisProperty,
                       child: Text(
                         listing.description!,
                         style: AppTypography.bodyMedium.copyWith(
@@ -554,7 +555,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Brokerage',
+                            AppLocalizations.of(context).brokerage,
                             style: AppTypography.labelSmall.copyWith(
                               color: AppColors.textSecondary,
                               fontSize: 11,
@@ -672,18 +673,20 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                                   : AppColors.navyDark,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              _phoneRevealed
-                                  ? (listing.brokerPhone?.isNotEmpty == true
-                                      ? '+91 ${listing.brokerPhone}'
-                                      : 'No number')
-                                  : 'Contact Lead Owner',
-                              style: AppTypography.labelMedium.copyWith(
-                                color: _phoneRevealed
-                                    ? AppColors.success
-                                    : AppColors.navyDark,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
+                            Builder(
+                              builder: (ctx) => Text(
+                                _phoneRevealed
+                                    ? (listing.brokerPhone?.isNotEmpty == true
+                                        ? '+91 ${listing.brokerPhone}'
+                                        : AppLocalizations.of(ctx).noNumber)
+                                    : AppLocalizations.of(ctx).contactLeadOwner,
+                                style: AppTypography.labelMedium.copyWith(
+                                  color: _phoneRevealed
+                                      ? AppColors.success
+                                      : AppColors.navyDark,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
                               ),
                             ),
                           ],
@@ -817,7 +820,7 @@ class _SpecsRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'KEY SPECS',
+                AppLocalizations.of(context).keySpecs,
                 style: AppTypography.labelSmall.copyWith(
                   color: AppColors.textSecondary,
                   fontSize: 8,
@@ -831,20 +834,20 @@ class _SpecsRow extends StatelessWidget {
             children: [
               _SpecTile(
                 icon: Icons.straighten_rounded,
-                label: 'Area',
+                label: AppLocalizations.of(context).area,
                 value: listing.areaLabel,
               ),
               _Divider(),
               _SpecTile(
                 icon: Icons.location_city_rounded,
-                label: 'City',
+                label: AppLocalizations.of(context).city,
                 value: listing.city,
               ),
               if (listing.propertyType != null) ...[
                 _Divider(),
                 _SpecTile(
                   icon: Icons.home_work_rounded,
-                  label: 'Type',
+                  label: AppLocalizations.of(context).type,
                   value: listing.propertyType!.label,
                 ),
               ],
@@ -1002,7 +1005,7 @@ class _BrokerCard extends StatelessWidget {
                             color: AppColors.gold.withValues(alpha: 0.4),),
                       ),
                       child: Text(
-                        'Verified Broker',
+                        AppLocalizations.of(context).verifiedBroker,
                         style: AppTypography.labelSmall.copyWith(
                           color: AppColors.gold,
                           fontSize: 10,
@@ -1030,7 +1033,7 @@ class _BrokerCard extends StatelessWidget {
                       Text(
                         hasPhone
                             ? '+91 ${listing.brokerPhone}'
-                            : 'No contact number',
+                            : AppLocalizations.of(context).noNumber,
                         style: TextStyle(
                           color: hasPhone
                               ? AppColors.white
@@ -1065,7 +1068,7 @@ class _BrokerCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'Tap to reveal',
+                          AppLocalizations.of(context).tapToReveal,
                           style: AppTypography.labelSmall.copyWith(
                             color: AppColors.gold,
                             fontSize: 9,
@@ -1111,9 +1114,9 @@ class _BrokerCard extends StatelessWidget {
                   Text(
                     phoneRevealed
                         ? (hasPhone
-                            ? 'Call +91 ${listing.brokerPhone}'
-                            : 'No number available')
-                        : 'Contact Lead Owner',
+                            ? '${AppLocalizations.of(context).callNumber} +91 ${listing.brokerPhone}'
+                            : AppLocalizations.of(context).noNumber)
+                        : AppLocalizations.of(context).contactLeadOwner,
                     style: AppTypography.labelMedium.copyWith(
                       color: phoneRevealed
                           ? AppColors.success
@@ -1259,7 +1262,7 @@ class _LeadsSection extends ConsumerWidget {
         Row(
           children: [
             Text(
-              'Leads',
+              AppLocalizations.of(context).leads,
               style: AppTypography.titleSmall.copyWith(
                 color: isDark ? AppColors.white : AppColors.navyDark,
               ),
@@ -1285,7 +1288,7 @@ class _LeadsSection extends ConsumerWidget {
             GestureDetector(
               onTap: () => _openLeadsSheet(context),
               child: Text(
-                'Add Lead',
+                AppLocalizations.of(context).addLead,
                 style: AppTypography.labelSmall.copyWith(
                   color: AppColors.gold,
                   fontWeight: FontWeight.w700,
@@ -1319,7 +1322,7 @@ class _LeadsSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Track leads for this property',
+                    AppLocalizations.of(context).trackLeadsForProperty,
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -1340,7 +1343,7 @@ class _LeadsSection extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'View all ${leads.length} leads →',
+                AppLocalizations.of(context).viewAllLeads,
                 style: AppTypography.labelSmall.copyWith(
                   color: AppColors.gold,
                   fontWeight: FontWeight.w600,

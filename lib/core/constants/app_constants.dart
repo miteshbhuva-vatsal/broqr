@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// App-wide string constants, limits, and config values.
 abstract final class AppConstants {
   // ── App meta ──────────────────────────────────────────────────────────────
@@ -51,7 +53,10 @@ abstract final class AppConstants {
       '{title}\n{location}\n₹{price}\n\n'
       'Download CPApp: https://cpapp.page.link/download';
 
-  // ── Backend API (Next.js admin panel — update with your DigitalOcean URL) ──
-  // Set this to your deployed admin URL, e.g. https://cpapp-admin.ondigitalocean.app
-  static const String apiBaseUrl = 'https://cpapp-admin.ondigitalocean.app';
+  // ── Backend API (Next.js admin panel) ────────────────────────────────────
+  // Debug: Android emulator loopback (10.0.2.2) or real-device LAN IP
+  // Release: deployed DigitalOcean URL (updated once DO deploy completes)
+  static String get apiBaseUrl => kDebugMode
+      ? 'http://10.0.2.2:3001'
+      : 'https://cpapp-admin-5bcug.ondigitalocean.app';
 }

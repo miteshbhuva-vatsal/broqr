@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   if (!await verifySession()) return apiError('Unauthorized', 401)
 
   const rangeParam = req.nextUrl.searchParams.get('range') ?? '30d'
+  try {
   const days = rangeParam === '7d' ? 7 : rangeParam === '90d' ? 90 : 30
 
   const db  = adminDb()
@@ -84,13 +85,20 @@ export async function GET(req: NextRequest) {
     dau:         dauByDay[date].size,
   }))
 
-  return Response.json({
-    totalUsers:       totalUsersSnap.data().count,
-    totalListings:    totalListingsSnap.data().count,
-    dau:              dauSnap.data().count,
-    mau:              mauSnap.data().count,
-    newUsersToday:    newUsersTodaySnap.data().count,
-    newListingsToday: newListingsTodaySnap.data().count,
-    dailySeries,
-  })
+    const response = Response.json({
+      totalUsers:       totalUsersSnap.data().count,
+      totalListings:    totalListingsSnap.data().count,
+      dau:              dauSnap.data().count,
+      mau:              mauSnap.data().count,
+      newUsersToday:    newUsersTodaySnap.data().count,
+      newListingsToday: newListingsTodaySnap.data().count,
+      dailySeries,
+    })
+    // Cache analytics for 60s — Firestore reads are expensive and data doesn't change per-second
+    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
+    return response
+  } catch (err) {
+    console.error('[analytics GET]', err)
+    return apiError('Failed to load analytics', 500)
+  }
 }

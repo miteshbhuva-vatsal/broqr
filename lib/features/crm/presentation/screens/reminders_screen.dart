@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
@@ -26,7 +27,7 @@ class RemindersScreen extends ConsumerWidget {
             const Icon(Icons.alarm_rounded, color: AppColors.gold, size: 22),
             const SizedBox(width: 8),
             Text(
-              'Reminders',
+              AppLocalizations.of(context).reminders,
               style: AppTypography.titleMedium.copyWith(
                 color: isDark ? AppColors.white : AppColors.navyDark,
                 fontWeight: FontWeight.w700,
@@ -303,14 +304,14 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'No reminders set',
+              AppLocalizations.of(context).noRemindersSet,
               style: AppTypography.titleMedium.copyWith(
                 color: isDark ? AppColors.white : AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Open a lead and tap "Set a follow-up reminder" to create one.',
+              AppLocalizations.of(context).setReminderHint,
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),

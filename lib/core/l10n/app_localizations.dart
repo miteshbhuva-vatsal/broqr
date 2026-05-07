@@ -192,6 +192,85 @@ class AppLocalizations {
       'guide5Title': 'Track Reminders',
       'guide5Body':
           'Set follow-up reminders so you never miss a lead.',
+      // Feed – extended
+      'allCities': 'All Cities',
+      'filterListings': 'Filter Listings',
+      'reset': 'Reset',
+      'allCaughtUp': '— All caught up —',
+      'couldNotLoadFeed': "Couldn't load the feed",
+      'tryAgain': 'Try again',
+      'noNetworkListings': 'No network listings',
+      'connectToBrokerSeeDeals': 'Connect with brokers to see their deals here.',
+      'noListingsPosted': 'No listings yet',
+      'postFirstDeal': 'Post your first deal to see it here.',
+      'noDealsYet': 'No deals yet',
+      'beFirstToPost': 'Be the first to post a deal in your city.',
+      'noBrokerPhone': "Broker hasn't added a contact number yet",
+      'lead': 'Lead',
+      // Inquire sheet
+      'contactBroker': 'Contact Broker',
+      'messageOnWhatsApp': 'Message on WhatsApp',
+      'addToCrmPipeline': 'Add to your CRM pipeline',
+      // City selection
+      'yourCity': 'Your City',
+      'detectViaGps': 'Detect via GPS',
+      'useThisCity': 'Use this city',
+      'orSearch': 'OR SEARCH',
+      'noCitiesFound': 'No cities found',
+      'skipForNow': 'Skip for now',
+      'gpsPermissionDenied': 'Location permission denied. Pick city manually.',
+      'couldNotDetermineCity': 'Could not determine city. Pick manually.',
+      'gpsUnavailable': 'GPS unavailable. Pick city manually.',
+      // Lead detail
+      'deleteLead': 'Delete Lead?',
+      'pipelineStage': 'Pipeline Stage',
+      'priorityLabel': 'Priority',
+      'linkedListing': 'Linked Listing',
+      'noNotesYetHint': 'No notes yet. Add one below.',
+      'addANote': 'Add a note…',
+      'followUpReminder': 'Follow-up Reminder',
+      'setFollowUpReminder': 'Set a follow-up reminder',
+      'reminderNoteOptional': 'Reminder Note (optional)',
+      'clear': 'Clear',
+      'overdue': 'OVERDUE',
+      // Reminders screen
+      'reminders': 'Reminders',
+      'noRemindersSet': 'No reminders set',
+      'setReminderHint': 'Open a lead and tap "Set a follow-up reminder" to create one.',
+      // Add lead sheet
+      'leadAddedToPipeline': 'Lead added to pipeline!',
+      'clientName': 'Client Name',
+      'phoneLabel': 'Phone',
+      'estimatedValue': 'Estimated Value (₹)',
+      'stageLabel': 'Stage',
+      'addToPipelineBtn': 'Add to Pipeline',
+      'nameRequired': 'Name is required',
+      'addLeadToTrack': 'Tap "Add Lead" to track interest in this property.',
+      // Pipeline stats
+      'total': 'Total',
+      // Broker profile
+      'copyProfileLink': 'Copy profile link',
+      'profileLinkCopied': 'Profile link copied!',
+      'shareProfile': 'Share profile',
+      'specialisesIn': 'Specialises In',
+      'followers': 'Followers',
+      'mutual': 'Mutual',
+      // My listings
+      'tapToPostFirstListing': 'Tap + to post your first listing',
+      // Listing detail
+      'aboutThisProperty': 'ABOUT THIS PROPERTY',
+      'keySpecs': 'KEY SPECS',
+      'area': 'Area',
+      'type': 'Type',
+      'tapToReveal': 'Tap to reveal',
+      'trackLeadsForProperty': 'Track leads for this property',
+      'noNumber': 'No number',
+      'viewAllLeads': 'View all leads →',
+      // Notifications
+      'notificationsTitle': 'Notifications',
+      'markAllRead': 'Mark all read',
+      'noNotificationsYet': 'No notifications yet',
+      'notificationsSubtitle': 'Connection requests and updates will appear here',
     },
 
     // ── Hindi ─────────────────────────────────────────────────────────────────
@@ -363,6 +442,85 @@ class AppLocalizations {
       'guide4Body': 'को-ब्रोकिंग के अवसर शेयर करने के लिए ब्रोकरों से जुड़ें।',
       'guide5Title': 'रिमाइंडर ट्रैक करें',
       'guide5Body': 'फॉलो-अप रिमाइंडर सेट करें ताकि कोई लीड न छूटे।',
+      // Feed – extended
+      'allCities': 'सभी शहर',
+      'filterListings': 'लिस्टिंग फ़िल्टर करें',
+      'reset': 'रीसेट करें',
+      'allCaughtUp': '— सब देख लिया —',
+      'couldNotLoadFeed': 'फीड लोड नहीं हो सकी',
+      'tryAgain': 'फिर से कोशिश करें',
+      'noNetworkListings': 'नेटवर्क में कोई लिस्टिंग नहीं',
+      'connectToBrokerSeeDeals': 'ब्रोकरों से जुड़ें और यहाँ उनकी डील देखें।',
+      'noListingsPosted': 'अभी कोई लिस्टिंग नहीं',
+      'postFirstDeal': 'यहाँ देखने के लिए अपनी पहली डील पोस्ट करें।',
+      'noDealsYet': 'अभी कोई डील नहीं',
+      'beFirstToPost': 'अपने शहर में पहली डील पोस्ट करें।',
+      'noBrokerPhone': 'ब्रोकर ने अभी तक संपर्क नंबर नहीं जोड़ा',
+      'lead': 'लीड',
+      // Inquire sheet
+      'contactBroker': 'ब्रोकर से संपर्क करें',
+      'messageOnWhatsApp': 'WhatsApp पर मैसेज करें',
+      'addToCrmPipeline': 'अपनी CRM पाइपलाइन में जोड़ें',
+      // City selection
+      'yourCity': 'आपका शहर',
+      'detectViaGps': 'GPS से पता लगाएं',
+      'useThisCity': 'यह शहर उपयोग करें',
+      'orSearch': 'या खोजें',
+      'noCitiesFound': 'कोई शहर नहीं मिला',
+      'skipForNow': 'अभी के लिए छोड़ें',
+      'gpsPermissionDenied': 'लोकेशन अनुमति नकारी। शहर मैन्युअल चुनें।',
+      'couldNotDetermineCity': 'शहर पता नहीं लगा। मैन्युअल चुनें।',
+      'gpsUnavailable': 'GPS उपलब्ध नहीं। शहर मैन्युअल चुनें।',
+      // Lead detail
+      'deleteLead': 'लीड हटाएं?',
+      'pipelineStage': 'पाइपलाइन स्टेज',
+      'priorityLabel': 'प्राथमिकता',
+      'linkedListing': 'लिंक्ड लिस्टिंग',
+      'noNotesYetHint': 'अभी कोई नोट नहीं। नीचे जोड़ें।',
+      'addANote': 'नोट जोड़ें…',
+      'followUpReminder': 'फॉलो-अप रिमाइंडर',
+      'setFollowUpReminder': 'फॉलो-अप रिमाइंडर सेट करें',
+      'reminderNoteOptional': 'रिमाइंडर नोट (वैकल्पिक)',
+      'clear': 'हटाएं',
+      'overdue': 'बकाया',
+      // Reminders screen
+      'reminders': 'रिमाइंडर',
+      'noRemindersSet': 'कोई रिमाइंडर सेट नहीं',
+      'setReminderHint': 'कोई लीड खोलें और रिमाइंडर सेट करें।',
+      // Add lead sheet
+      'leadAddedToPipeline': 'लीड पाइपलाइन में जोड़ी गई!',
+      'clientName': 'ग्राहक का नाम',
+      'phoneLabel': 'फोन',
+      'estimatedValue': 'अनुमानित मूल्य (₹)',
+      'stageLabel': 'स्टेज',
+      'addToPipelineBtn': 'पाइपलाइन में जोड़ें',
+      'nameRequired': 'नाम आवश्यक है',
+      'addLeadToTrack': '"लीड जोड़ें" टैप करके इस संपत्ति में रुचि ट्रैक करें।',
+      // Pipeline stats
+      'total': 'कुल',
+      // Broker profile
+      'copyProfileLink': 'प्रोफाइल लिंक कॉपी करें',
+      'profileLinkCopied': 'प्रोफाइल लिंक कॉपी हो गया!',
+      'shareProfile': 'प्रोफाइल शेयर करें',
+      'specialisesIn': 'विशेषज्ञता',
+      'followers': 'फॉलोअर्स',
+      'mutual': 'साझा',
+      // My listings
+      'tapToPostFirstListing': 'पहली लिस्टिंग पोस्ट करने के लिए + टैप करें',
+      // Listing detail
+      'aboutThisProperty': 'इस संपत्ति के बारे में',
+      'keySpecs': 'मुख्य विशेषताएं',
+      'area': 'क्षेत्रफल',
+      'type': 'प्रकार',
+      'tapToReveal': 'रिवील करने के लिए टैप करें',
+      'trackLeadsForProperty': 'इस संपत्ति के लीड ट्रैक करें',
+      'noNumber': 'नंबर नहीं है',
+      'viewAllLeads': 'सभी लीड देखें →',
+      // Notifications
+      'notificationsTitle': 'अधिसूचनाएं',
+      'markAllRead': 'सभी पढ़े गए',
+      'noNotificationsYet': 'अभी कोई अधिसूचना नहीं',
+      'notificationsSubtitle': 'कनेक्शन अनुरोध और अपडेट यहाँ दिखेंगे',
     },
 
     // ── Gujarati ──────────────────────────────────────────────────────────────
@@ -535,6 +693,85 @@ class AppLocalizations {
       'guide4Body': 'કો-બ્રોકિંગ તકો શેર કરવા બ્રોકરો સાથે જોડાઓ.',
       'guide5Title': 'રિમાઇન્ડર ટ્રૅક કરો',
       'guide5Body': 'ફૉલો-અપ રિમાઇન્ડર સેટ કરો જેથી કોઈ લીડ ચૂકી ન જાઓ.',
+      // Feed – extended
+      'allCities': 'બધા શહેર',
+      'filterListings': 'લિસ્ટિંગ ફિલ્ટર કરો',
+      'reset': 'રીસેટ',
+      'allCaughtUp': '— બધું જોઈ લીધું —',
+      'couldNotLoadFeed': 'ફીડ લોડ ન થઈ',
+      'tryAgain': 'ફરી પ્રયાસ કરો',
+      'noNetworkListings': 'નેટવર્કમાં કોઈ લિસ્ટિંગ નથી',
+      'connectToBrokerSeeDeals': 'બ્રોકર સાથે જોડાઓ અને ડીલ જુઓ.',
+      'noListingsPosted': 'હજી કોઈ લિસ્ટિંગ નથી',
+      'postFirstDeal': 'તમારી પ્રથમ ડીલ પોસ્ટ કરો.',
+      'noDealsYet': 'હજી કોઈ ડીલ નથી',
+      'beFirstToPost': 'તમારા શહેરમાં પ્રથમ ડીલ પોસ્ટ કરો.',
+      'noBrokerPhone': 'બ્રોકરે સંપર્ક નંબર ઉમેર્યો નથી',
+      'lead': 'લીડ',
+      // Inquire sheet
+      'contactBroker': 'બ્રોકર સંપર્ક કરો',
+      'messageOnWhatsApp': 'WhatsApp પર સંદેશ',
+      'addToCrmPipeline': 'CRM પાઇપલાઇનમાં ઉમેરો',
+      // City selection
+      'yourCity': 'તમારું શહેર',
+      'detectViaGps': 'GPS દ્વારા શોધો',
+      'useThisCity': 'આ શહેર વાપરો',
+      'orSearch': 'અથવા શોધો',
+      'noCitiesFound': 'કોઈ શહેર ન મળ્યું',
+      'skipForNow': 'અત્યારે છોડો',
+      'gpsPermissionDenied': 'લોકેશન પરવાનગી ન મળી. શહેર જાતે પસંદ કરો.',
+      'couldNotDetermineCity': 'શહેર નક્કી ન થઈ. જાતે પસંદ કરો.',
+      'gpsUnavailable': 'GPS ઉપલબ્ધ નથી. શહેર જાતે પસંદ કરો.',
+      // Lead detail
+      'deleteLead': 'લીડ કાઢી નાખો?',
+      'pipelineStage': 'પાઇપલાઇન સ્ટેજ',
+      'priorityLabel': 'પ્રાધાન્ય',
+      'linkedListing': 'લિંક્ડ લિસ્ટિંગ',
+      'noNotesYetHint': 'હજી કોઈ નોંધ નથી. નીચે ઉમેરો.',
+      'addANote': 'નોંધ ઉમેરો…',
+      'followUpReminder': 'ફૉલો-અપ રિમાઇન્ડર',
+      'setFollowUpReminder': 'ફૉલો-અપ રિમાઇન્ડર સેટ કરો',
+      'reminderNoteOptional': 'રિમાઇન્ડર નોંધ (વૈકલ્પિક)',
+      'clear': 'ક્લિયર',
+      'overdue': 'બાકી',
+      // Reminders screen
+      'reminders': 'રિમાઇન્ડર',
+      'noRemindersSet': 'કોઈ રિમાઇન્ડર સેટ નથી',
+      'setReminderHint': 'કોઈ લીડ ખોલો અને રિમાઇન્ડર સેટ કરો.',
+      // Add lead sheet
+      'leadAddedToPipeline': 'લીડ પાઇપલાઇનમાં ઉમેરાઈ!',
+      'clientName': 'ગ્રાહક નામ',
+      'phoneLabel': 'ફોન',
+      'estimatedValue': 'અંદાજ મૂલ્ય (₹)',
+      'stageLabel': 'સ્ટેજ',
+      'addToPipelineBtn': 'પાઇપલાઇનમાં ઉમેરો',
+      'nameRequired': 'નામ જરૂરી છે',
+      'addLeadToTrack': '"લીડ ઉમેરો" ટૅપ કરી આ પ્રોપર્ટી ટ્રૅક કરો.',
+      // Pipeline stats
+      'total': 'કુલ',
+      // Broker profile
+      'copyProfileLink': 'પ્રોફાઇલ લિંક કૉપિ કરો',
+      'profileLinkCopied': 'પ્રોફાઇલ લિંક કૉપિ થઈ!',
+      'shareProfile': 'પ્રોફાઇલ શૅર કરો',
+      'specialisesIn': 'વિશેષ ક્ષેત્ર',
+      'followers': 'ફૉલોઅર્સ',
+      'mutual': 'સહિયારા',
+      // My listings
+      'tapToPostFirstListing': 'પ્રથમ લિસ્ટિંગ પોસ્ટ કરવા + ટૅપ કરો',
+      // Listing detail
+      'aboutThisProperty': 'આ પ્રોપર્ટી વિશે',
+      'keySpecs': 'મુખ્ય વિગત',
+      'area': 'ક્ષેત્રફળ',
+      'type': 'પ્રકાર',
+      'tapToReveal': 'ટૅપ કરી જુઓ',
+      'trackLeadsForProperty': 'આ પ્રોપર્ટી માટે લીડ ટ્રૅક',
+      'noNumber': 'નંબર નથી',
+      'viewAllLeads': 'બધા લીડ જુઓ →',
+      // Notifications
+      'notificationsTitle': 'સૂચનાઓ',
+      'markAllRead': 'બધા વાંચ્યા',
+      'noNotificationsYet': 'હજી કોઈ સૂચના નથી',
+      'notificationsSubtitle': 'કનેક્શન વિનંતી અને અપડેટ અહીં દેખાશે',
     },
   };
 
@@ -705,6 +942,85 @@ class AppLocalizations {
   String get guide4Body => _s('guide4Body');
   String get guide5Title => _s('guide5Title');
   String get guide5Body => _s('guide5Body');
+  // Feed – extended
+  String get allCities => _s('allCities');
+  String get filterListings => _s('filterListings');
+  String get reset => _s('reset');
+  String get allCaughtUp => _s('allCaughtUp');
+  String get couldNotLoadFeed => _s('couldNotLoadFeed');
+  String get tryAgain => _s('tryAgain');
+  String get noNetworkListings => _s('noNetworkListings');
+  String get connectToBrokerSeeDeals => _s('connectToBrokerSeeDeals');
+  String get noListingsPosted => _s('noListingsPosted');
+  String get postFirstDeal => _s('postFirstDeal');
+  String get noDealsYet => _s('noDealsYet');
+  String get beFirstToPost => _s('beFirstToPost');
+  String get noBrokerPhone => _s('noBrokerPhone');
+  String get lead => _s('lead');
+  // Inquire sheet
+  String get contactBroker => _s('contactBroker');
+  String get messageOnWhatsApp => _s('messageOnWhatsApp');
+  String get addToCrmPipeline => _s('addToCrmPipeline');
+  // City selection
+  String get yourCity => _s('yourCity');
+  String get detectViaGps => _s('detectViaGps');
+  String get useThisCity => _s('useThisCity');
+  String get orSearch => _s('orSearch');
+  String get noCitiesFound => _s('noCitiesFound');
+  String get skipForNow => _s('skipForNow');
+  String get gpsPermissionDenied => _s('gpsPermissionDenied');
+  String get couldNotDetermineCity => _s('couldNotDetermineCity');
+  String get gpsUnavailable => _s('gpsUnavailable');
+  // Lead detail
+  String get deleteLead => _s('deleteLead');
+  String get pipelineStage => _s('pipelineStage');
+  String get priorityLabel => _s('priorityLabel');
+  String get linkedListing => _s('linkedListing');
+  String get noNotesYetHint => _s('noNotesYetHint');
+  String get addANote => _s('addANote');
+  String get followUpReminder => _s('followUpReminder');
+  String get setFollowUpReminder => _s('setFollowUpReminder');
+  String get reminderNoteOptional => _s('reminderNoteOptional');
+  String get clear => _s('clear');
+  String get overdue => _s('overdue');
+  // Reminders screen
+  String get reminders => _s('reminders');
+  String get noRemindersSet => _s('noRemindersSet');
+  String get setReminderHint => _s('setReminderHint');
+  // Add lead sheet
+  String get leadAddedToPipeline => _s('leadAddedToPipeline');
+  String get clientName => _s('clientName');
+  String get phoneLabel => _s('phoneLabel');
+  String get estimatedValue => _s('estimatedValue');
+  String get stageLabel => _s('stageLabel');
+  String get addToPipelineBtn => _s('addToPipelineBtn');
+  String get nameRequired => _s('nameRequired');
+  String get addLeadToTrack => _s('addLeadToTrack');
+  // Pipeline stats
+  String get total => _s('total');
+  // Broker profile
+  String get copyProfileLink => _s('copyProfileLink');
+  String get profileLinkCopied => _s('profileLinkCopied');
+  String get shareProfile => _s('shareProfile');
+  String get specialisesIn => _s('specialisesIn');
+  String get followers => _s('followers');
+  String get mutual => _s('mutual');
+  // My listings
+  String get tapToPostFirstListing => _s('tapToPostFirstListing');
+  // Listing detail
+  String get aboutThisProperty => _s('aboutThisProperty');
+  String get keySpecs => _s('keySpecs');
+  String get area => _s('area');
+  String get type => _s('type');
+  String get tapToReveal => _s('tapToReveal');
+  String get trackLeadsForProperty => _s('trackLeadsForProperty');
+  String get noNumber => _s('noNumber');
+  String get viewAllLeads => _s('viewAllLeads');
+  // Notifications
+  String get notificationsTitle => _s('notificationsTitle');
+  String get markAllRead => _s('markAllRead');
+  String get noNotificationsYet => _s('noNotificationsYet');
+  String get notificationsSubtitle => _s('notificationsSubtitle');
 }
 
 // ── Delegate ──────────────────────────────────────────────────────────────────

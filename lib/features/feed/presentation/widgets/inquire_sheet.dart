@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/presentation/widgets/add_lead_sheet.dart';
@@ -127,7 +128,7 @@ class InquireSheet extends StatelessWidget {
           const SizedBox(height: 20),
 
           Text(
-            'Contact Broker',
+            AppLocalizations.of(context).contactBroker,
             style: AppTypography.titleSmall.copyWith(
               color: isDark ? AppColors.white : AppColors.textPrimary,
             ),
@@ -146,9 +147,9 @@ class InquireSheet extends StatelessWidget {
             icon: Icons.chat_rounded,
             iconColor: const Color(0xFF25D366),
             label: hasPhone
-                ? 'Message on WhatsApp'
+                ? AppLocalizations.of(context).messageOnWhatsApp
                 : 'WhatsApp (phone not listed)',
-            sublabel: hasPhone ? listing.brokerPhone! : 'Broker has not added a phone number',
+            sublabel: hasPhone ? listing.brokerPhone! : AppLocalizations.of(context).noBrokerPhone,
             enabled: hasPhone,
             onTap: hasPhone ? () => _openWhatsApp(context) : null,
           ),
@@ -158,8 +159,8 @@ class InquireSheet extends StatelessWidget {
           _SheetButton(
             icon: Icons.bookmark_add_outlined,
             iconColor: AppColors.gold,
-            label: 'Add Lead',
-            sublabel: 'Add to your CRM pipeline',
+            label: AppLocalizations.of(context).addLead,
+            sublabel: AppLocalizations.of(context).addToCrmPipeline,
             enabled: true,
             onTap: () {
               Navigator.pop(context);

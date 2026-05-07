@@ -63,16 +63,16 @@ export default async function PortfolioPage({ params }: { params: Promise<{ uid:
                 <CheckCircle size={18} className="text-blue-500 shrink-0" />
               )}
             </div>
-            {user.reraNumber && (
+            {!!user.reraNumber && (
               <p className="text-xs text-gray-500 mt-0.5">RERA: {user.reraNumber as string}</p>
             )}
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {user.city && (
+              {!!user.city && (
                 <span className="flex items-center gap-1 text-xs text-gray-500">
                   <MapPin size={11} /> {user.city as string}
                 </span>
               )}
-              {user.mobile && (
+              {!!user.mobile && (
                 <a href={`tel:${user.mobile}`} className="flex items-center gap-1 text-xs text-amber-600 font-medium">
                   <Phone size={11} /> {user.mobile as string}
                 </a>
@@ -118,7 +118,7 @@ function ListingCard({ listing: l }: { listing: Record<string, unknown> }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      {l.heroImageUrl && (
+      {!!l.heroImageUrl && (
         <div className="relative h-40 w-full bg-gray-100">
           <Image
             src={l.heroImageUrl as string}
@@ -147,7 +147,7 @@ function ListingCard({ listing: l }: { listing: Record<string, unknown> }) {
           <MapPin size={10} />
           {l.location as string}, {l.city as string}
         </p>
-        {l.description && (
+        {!!l.description && (
           <p className="mt-1.5 text-xs text-gray-600 line-clamp-2">{l.description as string}</p>
         )}
       </div>

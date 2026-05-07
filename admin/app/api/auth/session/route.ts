@@ -15,6 +15,11 @@ export async function POST(req: NextRequest) {
       return apiError('Access denied. Admin accounts only.', 403)
     }
 
+    // Stamp admin custom claim so verifySession() skips Firestore on every request
+    if (!decoded.admin) {
+      await adminAuth().setCustomUserClaims(decoded.uid, { admin: true })
+    }
+
     const cookie = await createSessionCookie(idToken)
     await setSessionCookie(cookie)
 

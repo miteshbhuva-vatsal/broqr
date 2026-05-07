@@ -18,12 +18,19 @@ export async function verifySession(): Promise<{ uid: string; email: string } | 
 
     const decoded = await adminAuth().verifySessionCookie(session, true)
 
-    // Verify admin role in Firestore
+    // Fast path: custom claims set at login — no Firestore round-trip needed
+    if (decoded.admin === true) {
+      return { uid: decoded.uid, email: decoded.email ?? '' }
+    }
+
+    // Fallback: check Firestore (for users created before custom claims were used)
     const userDoc = await adminDb().collection('users').doc(decoded.uid).get()
     if (!userDoc.exists) return null
-
     const role = userDoc.data()?.role as string | undefined
     if (role !== 'admin') return null
+
+    // Backfill the custom claim so next request is fast
+    await adminAuth().setCustomUserClaims(decoded.uid, { admin: true })
 
     return { uid: decoded.uid, email: decoded.email ?? '' }
   } catch {

@@ -8,6 +8,7 @@ import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/broker_network/domain/entities/broker_profile.dart';
 import 'package:cpapp/features/broker_network/domain/entities/connection.dart';
@@ -192,7 +193,7 @@ class _ProfileView extends ConsumerWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _SectionLabel('Specialises In'),
+                          _SectionLabel(AppLocalizations.of(context).specialisesIn),
                           const SizedBox(height: 10),
                           Wrap(
                             spacing: 8,
@@ -210,7 +211,7 @@ class _ProfileView extends ConsumerWidget {
                   // ── Listings ────────────────────────────────────────────
                   Row(
                     children: [
-                      const _SectionLabel('Listings'),
+                      _SectionLabel(AppLocalizations.of(context).listings),
                       const Spacer(),
                       listingsAsync.when(
                         data: (l) => Text(
@@ -233,7 +234,7 @@ class _ProfileView extends ConsumerWidget {
                       ),
                     ),
                     error: (e, _) => Text(
-                      'Could not load listings',
+                      AppLocalizations.of(context).couldNotLoadListings,
                       style: TextStyle(color: Colors.grey[500], fontSize: 13),
                     ),
                     data: (listings) {
@@ -242,7 +243,7 @@ class _ProfileView extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
                             child: Text(
-                              'No listings yet',
+                              AppLocalizations.of(context).noListingsPosted,
                               style: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: 13,
@@ -291,7 +292,7 @@ class _ProfileAppBar extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.link_rounded),
-          tooltip: 'Copy profile link',
+          tooltip: AppLocalizations.of(context).copyProfileLink,
           onPressed: () {
             final user = ref.read(authStateChangesProvider).valueOrNull;
             final refCode = user?.effectiveReferralCode
@@ -299,17 +300,17 @@ class _ProfileAppBar extends ConsumerWidget {
             final link = DeepLinkService.brokerUri(broker.uid, refCode).toString();
             Clipboard.setData(ClipboardData(text: link));
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Profile link copied!'),
+              SnackBar(
+                content: Text(AppLocalizations.of(context).profileLinkCopied),
                 behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 2),
+                duration: const Duration(seconds: 2),
               ),
             );
           },
         ),
         IconButton(
           icon: const Icon(Icons.share_outlined),
-          tooltip: 'Share profile',
+          tooltip: AppLocalizations.of(context).shareProfile,
           onPressed: () {
             final user = ref.read(authStateChangesProvider).valueOrNull;
             final refCode = user?.effectiveReferralCode
@@ -540,21 +541,21 @@ class _StatsRow extends StatelessWidget {
           Expanded(
             child: _StatCell(
               value: broker.listingsCount.toString(),
-              label: 'Listings',
+              label: AppLocalizations.of(context).listings,
             ),
           ),
           divider,
           Expanded(
             child: _StatCell(
               value: broker.connectionsCount.toString(),
-              label: 'Followers',
+              label: AppLocalizations.of(context).followers,
             ),
           ),
           divider,
           Expanded(
             child: _StatCell(
               value: mutualCount.toString(),
-              label: 'Mutual',
+              label: AppLocalizations.of(context).mutual,
               highlight: mutualCount > 0,
             ),
           ),

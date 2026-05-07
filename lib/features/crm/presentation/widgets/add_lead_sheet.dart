@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
@@ -70,8 +71,8 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
       Navigator.pop(context);
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lead added to pipeline!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).leadAddedToPipeline),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -116,7 +117,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                 const SizedBox(height: 16),
 
                 Text(
-                  'Add Lead',
+                  AppLocalizations.of(context).addLead,
                   style: AppTypography.titleMedium.copyWith(
                     color: isDark ? AppColors.white : AppColors.navyDark,
                   ),
@@ -163,14 +164,14 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                 const SizedBox(height: 20),
 
                 // Client name
-                const _Label('Client Name', required: true),
+                _Label(AppLocalizations.of(context).clientName, required: true),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Name is required'
+                      ? AppLocalizations.of(context).nameRequired
                       : null,
                   decoration: const InputDecoration(
                     hintText: 'e.g. Rahul Sharma',
@@ -180,7 +181,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                 const SizedBox(height: 14),
 
                 // Phone
-                const _Label('Phone', required: false),
+                _Label(AppLocalizations.of(context).phoneLabel, required: false),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _phoneCtrl,
@@ -199,7 +200,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                 const SizedBox(height: 14),
 
                 // Estimated value
-                const _Label('Estimated Value (₹)', required: false),
+                _Label(AppLocalizations.of(context).estimatedValue, required: false),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _valueCtrl,
@@ -215,7 +216,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                 const SizedBox(height: 20),
 
                 // Stage selector
-                const _Label('Stage', required: true),
+                _Label(AppLocalizations.of(context).stageLabel, required: true),
                 const SizedBox(height: 8),
                 _StageSelector(
                   selected: _stage,
@@ -225,7 +226,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                 const SizedBox(height: 20),
 
                 // Priority selector
-                const _Label('Priority', required: true),
+                _Label(AppLocalizations.of(context).priorityLabel, required: true),
                 const SizedBox(height: 8),
                 _PrioritySelector(
                   selected: _priority,
@@ -257,7 +258,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                             ),
                           )
                         : Text(
-                            'Add to Pipeline',
+                            AppLocalizations.of(context).addToPipelineBtn,
                             style: AppTypography.labelLarge.copyWith(
                               color: AppColors.navyDark,
                               fontWeight: FontWeight.w700,

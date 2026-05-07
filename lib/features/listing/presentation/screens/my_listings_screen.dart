@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/feed/presentation/widgets/feed_card.dart';
@@ -27,7 +28,7 @@ class MyListingsScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'My Listings',
+          AppLocalizations.of(context).myListings,
           style: AppTypography.titleMedium.copyWith(
             color: isDark ? AppColors.white : AppColors.navyDark,
           ),
@@ -71,7 +72,7 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => ref.read(myListingsProvider.notifier).refresh(),
-              child: const Text('Retry'),
+              child: Text(AppLocalizations.of(context).retry),
             ),
           ],
         ),
@@ -90,14 +91,14 @@ class _Body extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No listings yet',
+              AppLocalizations.of(context).noListingsPosted,
               style: AppTypography.titleMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap + to post your first listing',
+              AppLocalizations.of(context).tapToPostFirstListing,
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textHint,
               ),

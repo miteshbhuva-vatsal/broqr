@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
@@ -37,36 +38,41 @@ class PipelineStatsBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          _Stat(
-            label: 'Pipeline',
-            value: _formatValue(crmState.pipelineValue),
-            valueColor: AppColors.gold,
-            isDark: isDark,
-          ),
-          _Divider(),
-          _Stat(
-            label: 'Active',
-            value: '${crmState.activeCount}',
-            valueColor: AppColors.white,
-            isDark: isDark,
-          ),
-          _Divider(),
-          _Stat(
-            label: 'Closed',
-            value: '${crmState.closedCount}',
-            valueColor: AppColors.success,
-            isDark: isDark,
-          ),
-          _Divider(),
-          _Stat(
-            label: 'Total',
-            value: '${crmState.leads.length}',
-            valueColor: AppColors.white,
-            isDark: isDark,
-          ),
-        ],
+      child: Builder(
+        builder: (context) {
+          final l = AppLocalizations.of(context);
+          return Row(
+            children: [
+              _Stat(
+                label: l.pipeline,
+                value: _formatValue(crmState.pipelineValue),
+                valueColor: AppColors.gold,
+                isDark: isDark,
+              ),
+              _Divider(),
+              _Stat(
+                label: l.active,
+                value: '${crmState.activeCount}',
+                valueColor: AppColors.white,
+                isDark: isDark,
+              ),
+              _Divider(),
+              _Stat(
+                label: l.closed,
+                value: '${crmState.closedCount}',
+                valueColor: AppColors.success,
+                isDark: isDark,
+              ),
+              _Divider(),
+              _Stat(
+                label: l.total,
+                value: '${crmState.leads.length}',
+                valueColor: AppColors.white,
+                isDark: isDark,
+              ),
+            ],
+          );
+        },
       ),
     );
   }

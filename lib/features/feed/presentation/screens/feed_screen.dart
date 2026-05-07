@@ -12,6 +12,7 @@ import 'package:cpapp/features/feed/presentation/widgets/feed_card.dart';
 import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
 import 'package:cpapp/features/listing/domain/entities/property_type.dart';
 import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
+import 'package:cpapp/core/l10n/app_localizations.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -167,7 +168,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                           Text(
                             (city != null && city.isNotEmpty)
                                 ? city
-                                : 'All Cities',
+                                : AppLocalizations.of(context).allCities,
                             style: AppTypography.labelSmall.copyWith(
                               color: (city != null && city.isNotEmpty)
                                   ? AppColors.gold
@@ -199,7 +200,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     size: 22,
                   ),
                   onPressed: _showLanguagePicker,
-                  tooltip: 'Language',
+                  tooltip: AppLocalizations.of(context).selectLanguage,
                 ),
                 // Profile
                 IconButton(
@@ -353,7 +354,7 @@ class _LanguagePickerSheet extends ConsumerWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Language',
+              AppLocalizations.of(context).selectLanguage,
               style: AppTypography.titleSmall.copyWith(
                 color: isDark ? AppColors.white : AppColors.navyDark,
                 fontWeight: FontWeight.w700,
@@ -451,21 +452,21 @@ class _ModeBar extends StatelessWidget {
       child: Row(
         children: [
           _ModeChip(
-            label: 'All',
+            label: AppLocalizations.of(context).allDeals,
             selected: mode == FeedMode.all,
             onTap: () => onSelect(FeedMode.all),
             isDark: isDark,
           ),
           const SizedBox(width: 8),
           _ModeChip(
-            label: 'My Network',
+            label: AppLocalizations.of(context).myNetworkDeals,
             selected: mode == FeedMode.network,
             onTap: () => onSelect(FeedMode.network),
             isDark: isDark,
           ),
           const SizedBox(width: 8),
           _ModeChip(
-            label: 'My Listings',
+            label: AppLocalizations.of(context).myListingsDeals,
             selected: mode == FeedMode.mine,
             onTap: () => onSelect(FeedMode.mine),
             isDark: isDark,
@@ -602,7 +603,7 @@ class _FeedFilterSheetState extends State<_FeedFilterSheet> {
             child: Row(
               children: [
                 Text(
-                  'Filter Listings',
+                  AppLocalizations.of(context).filterListings,
                   style: AppTypography.titleMedium.copyWith(
                     color: isDark ? AppColors.white : AppColors.navyDark,
                     fontWeight: FontWeight.w700,
@@ -612,7 +613,7 @@ class _FeedFilterSheetState extends State<_FeedFilterSheet> {
                 TextButton(
                   onPressed: _reset,
                   child: Text(
-                    'Reset',
+                    AppLocalizations.of(context).reset,
                     style: AppTypography.labelMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -626,7 +627,7 @@ class _FeedFilterSheetState extends State<_FeedFilterSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              'DEAL TYPE',
+              AppLocalizations.of(context).dealType.toUpperCase(),
               style: AppTypography.labelSmall.copyWith(
                 color: AppColors.textHint,
                 fontWeight: FontWeight.w600,
@@ -690,7 +691,7 @@ class _FeedFilterSheetState extends State<_FeedFilterSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              'PROPERTY TYPE',
+              AppLocalizations.of(context).propertyType.toUpperCase(),
               style: AppTypography.labelSmall.copyWith(
                 color: AppColors.textHint,
                 fontWeight: FontWeight.w600,
@@ -763,7 +764,7 @@ class _FeedFilterSheetState extends State<_FeedFilterSheet> {
                   elevation: 0,
                 ),
                 child: Text(
-                  'Apply Filters',
+                  AppLocalizations.of(context).applyFilters,
                   style: AppTypography.labelMedium.copyWith(
                     color: AppColors.navyDark,
                     fontWeight: FontWeight.w700,
@@ -832,7 +833,7 @@ class _FeedBody extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    '— All caught up —',
+                    AppLocalizations.of(context).allCaughtUp,
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textHint,
                     ),
@@ -989,7 +990,7 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Couldn\'t load the feed',
+              AppLocalizations.of(context).couldNotLoadFeed,
               style: AppTypography.titleSmall
                   .copyWith(color: AppColors.textSecondary),
             ),
@@ -1004,7 +1005,7 @@ class _ErrorState extends StatelessWidget {
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, color: AppColors.gold),
               label: Text(
-                'Try again',
+                AppLocalizations.of(context).tryAgain,
                 style: AppTypography.labelMedium.copyWith(color: AppColors.gold),
               ),
             ),
@@ -1025,21 +1026,22 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final (emoji, title, sub) = switch (mode) {
       FeedMode.network => (
           '🤝',
-          'No network listings',
-          'Connect with brokers to see their deals here.',
+          l.noNetworkListings,
+          l.connectToBrokerSeeDeals,
         ),
       FeedMode.mine => (
           '🏗️',
-          'No listings yet',
-          'Post your first deal to see it here.',
+          l.noListingsPosted,
+          l.postFirstDeal,
         ),
       FeedMode.all => (
           '🏠',
-          'No deals yet',
-          'Be the first to post a deal in your city.',
+          l.noDealsYet,
+          l.beFirstToPost,
         ),
     };
 
