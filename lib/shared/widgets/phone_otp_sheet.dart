@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_auth/smart_auth.dart';
 import 'package:cpapp/core/constants/app_constants.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
@@ -32,11 +33,13 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
   final _otpCtrl = TextEditingController();
   final _phoneFocus = FocusNode();
   final _otpFocus = FocusNode();
-  final _dio = Dio(BaseOptions(
-    baseUrl: AppConstants.apiBaseUrl,
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 15),
-  ),);
+  final _dio = Dio(
+    BaseOptions(
+      baseUrl: AppConstants.apiBaseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+    ),
+  );
 
   bool _otpSent = false;
   bool _isLoading = false;
@@ -46,8 +49,7 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
   void initState() {
     super.initState();
     if (widget.initialPhone != null) {
-      _phoneCtrl.text =
-          widget.initialPhone!.replaceAll(RegExp(r'[^0-9]'), '');
+      _phoneCtrl.text = widget.initialPhone!.replaceAll(RegExp(r'[^0-9]'), '');
     }
   }
 
@@ -57,7 +59,20 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
     _otpCtrl.dispose();
     _phoneFocus.dispose();
     _otpFocus.dispose();
+    SmartAuth.instance.removeUserConsentApiListener();
     super.dispose();
+  }
+
+  void _startSmsAutoRead() {
+    SmartAuth.instance
+        .getSmsWithUserConsentApi(matcher: r'\d{6}')
+        .then((result) {
+      if (!mounted) return;
+      if (result.hasData && result.data?.code != null) {
+        _otpCtrl.text = result.data!.code!;
+        _verifyOtp();
+      }
+    });
   }
 
   Future<void> _sendOtp() async {
@@ -86,6 +101,7 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
           const Duration(milliseconds: 100),
           () => _otpFocus.requestFocus(),
         );
+        _startSmsAutoRead();
       } else {
         _setError(res.data?['error'] as String? ?? 'Failed to send OTP.');
       }
@@ -148,7 +164,12 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
   }
 
   void _setError(String msg) {
-    if (mounted) setState(() { _isLoading = false; _error = msg; });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _error = msg;
+      });
+    }
   }
 
   @override
@@ -302,8 +323,11 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.error_outline,
-                      color: AppColors.error, size: 14,),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -324,9 +348,8 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : (_otpSent ? _verifyOtp : _sendOtp),
+                onPressed:
+                    _isLoading ? null : (_otpSent ? _verifyOtp : _sendOtp),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.gold,
                   foregroundColor: AppColors.navyDark,
