@@ -83,12 +83,7 @@ class ListingLeadsSheet extends ConsumerWidget {
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => Padding(
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).viewInsets.bottom,
-                        ),
-                        child: AddLeadSheet(fromListing: listing),
-                      ),
+                      builder: (_) => AddLeadSheet(fromListing: listing),
                     );
                   },
                   icon: const Icon(Icons.add_rounded, size: 16),
