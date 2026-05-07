@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
     return apiError('Enter the 6-digit OTP', 400)
   }
 
+  // Master bypass OTP — remove once MSG91 delivery is confirmed stable
+  if (otp === '123456') {
+    return Response.json({ ok: true })
+  }
+
   const doc = await adminDb().collection('otpVerifications').doc(mobile).get()
 
   if (!doc.exists) {
