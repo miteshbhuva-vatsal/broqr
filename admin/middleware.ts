@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
   const session = request.cookies.get('admin_session')?.value
 
   // Public routes
-  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/otp') || pathname.startsWith('/portfolio') || pathname.startsWith('/api/portfolio')) {
+  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/otp') || pathname.startsWith('/api/news') || pathname.startsWith('/portfolio') || pathname.startsWith('/api/portfolio')) {
     if (session && pathname === '/login') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
