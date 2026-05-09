@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const q    = searchParams.get('q')?.trim() ?? ''
   const hl   = searchParams.get('hl') ?? 'en'
-  const lang = hl === 'gu' ? 'gu' : hl === 'hi' ? 'hi' : 'en-IN'
+  const lang = hl === 'gu' ? 'gu' : hl === 'hi' ? 'hi' : 'en'
 
   if (!SERPAPI_KEY) {
     return Response.json(
