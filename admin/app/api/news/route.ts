@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   url.searchParams.set('num', '20')
   url.searchParams.set('api_key', SERPAPI_KEY)
 
-  let serpData: { news?: SerpApiArticle[] }
+  let serpData: { news_results?: SerpApiArticle[] }
   try {
     const res = await fetch(url.toString(), {
       // Next.js ISR: cache each unique query for 3 hours server-side
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ articles: [] }, { status: 200 })
   }
 
-  const raw: SerpApiArticle[] = serpData.news ?? []
+  const raw: SerpApiArticle[] = serpData.news_results ?? []
 
   const articles = raw
     .map((item) => ({
