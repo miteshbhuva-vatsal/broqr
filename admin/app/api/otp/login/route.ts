@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { adminDb } from '@/lib/firebase-admin'
+import { adminDb, adminAuth } from '@/lib/firebase-admin'
 import { apiError } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
@@ -30,7 +30,20 @@ export async function POST(req: NextRequest) {
     return apiError('Incorrect OTP. Please try again.', 400)
   }
 
-  // Verified — delete so it can't be reused
   await adminDb().collection('otpVerifications').doc(mobile).delete()
-  return Response.json({ ok: true })
+
+  const phoneNumber = `+91${mobile}`
+
+  // Get or create Firebase Auth user for this phone number
+  let uid: string
+  try {
+    const existing = await adminAuth().getUserByPhoneNumber(phoneNumber)
+    uid = existing.uid
+  } catch {
+    const newUser = await adminAuth().createUser({ phoneNumber })
+    uid = newUser.uid
+  }
+
+  const token = await adminAuth().createCustomToken(uid)
+  return Response.json({ ok: true, token, uid })
 }
