@@ -10,6 +10,9 @@ function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000))
 }
 
+const TEST_BYPASS = process.env.TEST_OTP_BYPASS === 'true'
+const TEST_OTP    = '123456'
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const { mobile } = body as { mobile?: string }
@@ -17,12 +20,21 @@ export async function POST(req: NextRequest) {
   if (!mobile || !/^\d{10}$/.test(mobile)) {
     return apiError('Enter a valid 10-digit mobile number', 400)
   }
+
+  const expiresAt = Date.now() + 10 * 60 * 1000 // 10 minutes
+
+  // ── Test bypass: skip MSG91, store fixed OTP ──────────────────────────────
+  if (TEST_BYPASS) {
+    await adminDb().collection('otpVerifications').doc(mobile).set({ otp: TEST_OTP, expiresAt })
+    return Response.json({ ok: true })
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (!AUTH_KEY || !TEMPLATE_ID) {
     return apiError('MSG91 not configured', 500)
   }
 
   const otp = generateOtp()
-  const expiresAt = Date.now() + 10 * 60 * 1000 // 10 minutes
 
   // Store OTP in Firestore before sending (so it exists even if SMS is slow)
   await adminDb().collection('otpVerifications').doc(mobile).set({ otp, expiresAt })
