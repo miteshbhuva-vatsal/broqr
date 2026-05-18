@@ -75,6 +75,11 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
     });
   }
 
+  static String? _extractError(dynamic data) {
+    if (data is Map) return data['error']?.toString();
+    return null;
+  }
+
   Future<void> _sendOtp() async {
     final phone = _phoneCtrl.text.trim();
     if (phone.length != 10) {
@@ -87,11 +92,12 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
     });
 
     try {
-      final res = await _dio.post<Map<String, dynamic>>(
+      final res = await _dio.post<dynamic>(
         '/api/otp/send',
         data: {'mobile': phone},
       );
-      if (res.data?['ok'] == true) {
+      final data = res.data;
+      if (data is Map && data['ok'] == true) {
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -103,11 +109,10 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
         );
         _startSmsAutoRead();
       } else {
-        _setError(res.data?['error'] as String? ?? 'Failed to send OTP.');
+        _setError(_extractError(data) ?? 'Failed to send OTP.');
       }
     } on DioException catch (e) {
-      final msg = (e.response?.data as Map?)?['error']?.toString();
-      _setError(msg ?? 'Failed to send OTP. Check your number.');
+      _setError(_extractError(e.response?.data) ?? 'Failed to send OTP. Check your number.');
     } catch (_) {
       _setError('Something went wrong. Please try again.');
     }
@@ -125,20 +130,18 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
     });
 
     try {
-      final res = await _dio.post<Map<String, dynamic>>(
+      final res = await _dio.post<dynamic>(
         '/api/otp/verify',
         data: {'mobile': _phoneCtrl.text.trim(), 'otp': otp},
       );
-      if (res.data?['ok'] == true) {
+      final data = res.data;
+      if (data is Map && data['ok'] == true) {
         await _complete(_phoneCtrl.text.trim());
       } else {
-        _setError(
-          res.data?['error'] as String? ?? 'Incorrect OTP. Please try again.',
-        );
+        _setError(_extractError(data) ?? 'Incorrect OTP. Please try again.');
       }
     } on DioException catch (e) {
-      final msg = (e.response?.data as Map?)?['error']?.toString();
-      _setError(msg ?? 'Incorrect OTP. Please try again.');
+      _setError(_extractError(e.response?.data) ?? 'Incorrect OTP. Please try again.');
     } catch (_) {
       _setError('Something went wrong. Please try again.');
     }
@@ -240,6 +243,12 @@ class _PhoneOtpSheetState extends ConsumerState<PhoneOtpSheet> {
                       ),
                     ),
                   ],
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  color: AppColors.textSecondary,
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),

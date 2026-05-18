@@ -57,7 +57,7 @@ abstract final class ReferralService {
             .doc(pending.listingId)
             .get();
         if (listingSnap.exists) {
-          final d = listingSnap.data()!;
+          final d = listingSnap.data() ?? {};
           listingCity = d['city'] as String?;
           final price = (d['price'] as num?)?.toDouble();
           if (price != null) {

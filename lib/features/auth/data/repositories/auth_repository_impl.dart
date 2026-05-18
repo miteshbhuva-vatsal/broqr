@@ -30,6 +30,18 @@ class AuthRepositoryImpl implements AuthRepository {
           profile = await _dataSource.fetchUserProfile(firebaseUser.uid);
         }
         if (profile != null) return profile;
+
+        // OTP users have no Firestore doc yet — create a minimal one so that
+        // completeProfile's set(merge: true) has something to merge into,
+        // and so the router can read isProfileComplete = false correctly.
+        final minimal = UserModel.fromNewSocialLogin(
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName ?? '',
+          email: firebaseUser.email ?? '',
+          photoUrl: firebaseUser.photoURL,
+        );
+        await _dataSource.saveUserProfile(minimal);
+        return minimal;
       } catch (_) {
         // Firestore unavailable (permissions, offline) — use Firebase-only data
       }

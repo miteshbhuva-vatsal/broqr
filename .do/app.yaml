@@ -1,4 +1,4 @@
-name: cpapp-admin
+name: cpapp
 region: blr
 services:
   - name: admin
@@ -31,15 +31,22 @@ services:
       - key: FIREBASE_CLIENT_EMAIL
         value: firebase-adminsdk-fbsvc@cpapp-ace05.iam.gserviceaccount.com
       - key: FIREBASE_PRIVATE_KEY
-        value: "YOUR_FIREBASE_PRIVATE_KEY"
         type: SECRET
       - key: SESSION_SECRET
-        value: "YOUR_SESSION_SECRET"
         type: SECRET
       - key: MSG91_AUTH_KEY
-        value: "YOUR_MSG91_AUTH_KEY"
         type: SECRET
       - key: MSG91_TEMPLATE_ID
         value: 63f496b4d6fc05175452ebf4
       - key: MSG91_SENDER_ID
         value: DGPROP
+
+  - name: flutter-web
+    dockerfile_path: Dockerfile
+    github:
+      repo: miteshbhuva-vatsal/broqr
+      branch: main
+      deploy_on_push: true
+    http_port: 80
+    instance_size_slug: basic-xxs
+    instance_count: 1

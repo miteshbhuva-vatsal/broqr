@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
@@ -7,6 +9,7 @@ import 'package:cpapp/features/listing/domain/entities/listing.dart' show AreaUn
 import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
 import 'package:cpapp/features/listing/domain/entities/property_type.dart';
 import 'package:cpapp/features/profile/presentation/widgets/city_picker_sheet.dart';
+import 'package:cpapp/shared/widgets/locality_autocomplete.dart';
 
 /// Step 2 — Property details form (city, location, area, price, description).
 class StepPropertyDetails extends StatefulWidget {
@@ -20,6 +23,8 @@ class StepPropertyDetails extends StatefulWidget {
     required this.price,
     required this.originalPrice,
     required this.brokerage,
+    required this.instagramUrl,
+    required this.pdfFile,
     required this.description,
     required this.onTitleChanged,
     required this.onCityChanged,
@@ -28,6 +33,9 @@ class StepPropertyDetails extends StatefulWidget {
     required this.onPriceChanged,
     required this.onOriginalPriceChanged,
     required this.onBrokerageChanged,
+    required this.onInstagramUrlChanged,
+    required this.onPdfFileChanged,
+    required this.onPdfFileCleared,
     required this.onDescriptionChanged,
     required this.visibility,
     required this.onVisibilityChanged,
@@ -47,6 +55,8 @@ class StepPropertyDetails extends StatefulWidget {
   final String price;
   final String originalPrice;
   final String brokerage;
+  final String instagramUrl;
+  final File? pdfFile;
   final String description;
   final AreaUnit areaUnit;
   final ValueChanged<AreaUnit> onAreaUnitChanged;
@@ -58,6 +68,9 @@ class StepPropertyDetails extends StatefulWidget {
   final ValueChanged<String> onPriceChanged;
   final ValueChanged<String> onOriginalPriceChanged;
   final ValueChanged<String> onBrokerageChanged;
+  final ValueChanged<String> onInstagramUrlChanged;
+  final ValueChanged<File> onPdfFileChanged;
+  final VoidCallback onPdfFileCleared;
   final ValueChanged<String> onDescriptionChanged;
   final ValueChanged<ListingVisibility> onVisibilityChanged;
   final ValueChanged<PropertyType?>? onPropertyTypeChanged;
@@ -74,6 +87,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
   late final TextEditingController _priceCtrl;
   late final TextEditingController _originalPriceCtrl;
   late final TextEditingController _brokerageCtrl;
+  late final TextEditingController _instagramCtrl;
   late final TextEditingController _descCtrl;
 
   @override
@@ -85,6 +99,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
     _priceCtrl = TextEditingController(text: widget.price);
     _originalPriceCtrl = TextEditingController(text: widget.originalPrice);
     _brokerageCtrl = TextEditingController(text: widget.brokerage);
+    _instagramCtrl = TextEditingController(text: widget.instagramUrl);
     _descCtrl = TextEditingController(text: widget.description);
   }
 
@@ -96,8 +111,20 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
     _priceCtrl.dispose();
     _originalPriceCtrl.dispose();
     _brokerageCtrl.dispose();
+    _instagramCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPdf() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      allowMultiple: false,
+    );
+    if (result != null && result.files.single.path != null) {
+      widget.onPdfFileChanged(File(result.files.single.path!));
+    }
   }
 
   Future<void> _pickCity() async {
@@ -166,7 +193,7 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           const SizedBox(height: 24),
 
           // Project / Scheme title (optional)
-          _Label(l.projectSchemeName, required: false),
+          _Label(l.listingTitle, required: false),
           const SizedBox(height: 6),
           TextFormField(
             controller: _titleCtrl,
@@ -284,18 +311,13 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
           // Location / Society name
           _Label(l.locationSociety, required: true),
           const SizedBox(height: 6),
-          TextFormField(
+          LocalityAutocomplete(
             controller: _locationCtrl,
+            hint: 'e.g. Andheri West, Oberoi Springs',
+            city: widget.city,
             onChanged: widget.onLocationChanged,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.next,
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? l.locationRequired : null,
-            decoration: const InputDecoration(
-              hintText: 'e.g. Andheri West, Oberoi Springs',
-              prefixIcon:
-                  Icon(Icons.location_on_outlined, size: 20),
-            ),
           ),
           const SizedBox(height: 16),
 
@@ -448,6 +470,79 @@ class _StepPropertyDetailsState extends State<StepPropertyDetails> {
             decoration: const InputDecoration(
               hintText: 'e.g. 2% or ₹50,000',
               prefixIcon: Icon(Icons.handshake_outlined, size: 20),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Instagram URL (optional)
+          const SizedBox(height: 16),
+          const _Label('Instagram URL', required: false),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _instagramCtrl,
+            onChanged: widget.onInstagramUrlChanged,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              hintText: 'https://www.instagram.com/yourpage',
+              prefixIcon: const Padding(
+                padding: EdgeInsets.all(12),
+                child: _InstagramIcon(size: 20),
+              ),
+              helperText: l.optionalLabel,
+              helperStyle: const TextStyle(fontSize: 10, color: AppColors.textHint),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // PDF Brochure (optional)
+          const _Label('PDF Brochure', required: false),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: widget.pdfFile == null ? _pickPdf : null,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: widget.pdfFile != null
+                      ? const Color(0xFFE53935).withValues(alpha: 0.5)
+                      : (isDark ? AppColors.borderDark : AppColors.border),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf_rounded,
+                      size: 20, color: Color(0xFFE53935),),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.pdfFile != null
+                          ? widget.pdfFile!.path.split('/').last
+                          : 'Attach PDF Brochure (optional)',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: widget.pdfFile != null
+                            ? (isDark ? AppColors.white : AppColors.textPrimary)
+                            : AppColors.textHint,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (widget.pdfFile != null)
+                    GestureDetector(
+                      onTap: widget.onPdfFileCleared,
+                      child: const Icon(Icons.close_rounded,
+                          size: 18, color: AppColors.textSecondary,),
+                    )
+                  else
+                    const Icon(Icons.attach_file_rounded,
+                        size: 18, color: AppColors.textSecondary,),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -608,6 +703,28 @@ class _VisibilityPicker extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ── Instagram gradient icon ────────────────────────────────────────────────────
+
+class _InstagramIcon extends StatelessWidget {
+  const _InstagramIcon({required this.size});
+  final double size;
+
+  static const _gradient = LinearGradient(
+    colors: [Color(0xFFF9A825), Color(0xFFF4511E), Color(0xFFAD1457), Color(0xFF6A1B9A)],
+    begin: Alignment.bottomLeft,
+    end: Alignment.topRight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (bounds) => _gradient.createShader(bounds),
+      blendMode: BlendMode.srcIn,
+      child: Icon(Icons.camera_alt_rounded, size: size, color: Colors.white),
     );
   }
 }

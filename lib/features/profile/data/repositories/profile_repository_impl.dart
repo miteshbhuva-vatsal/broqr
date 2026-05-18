@@ -19,12 +19,19 @@ class ProfileRepositoryImpl implements ProfileRepository {
     required String name,
     required String mobile,
     required String city,
-    required UserRole role,
+    UserRole? role,
     String? reraNumber,
     File? photoFile,
+    String accountType = 'individual',
+    String? companyName,
+    String? address,
+    String? gstNo,
+    String? orgId,
+    List<String> workingAreas = const [],
+    String? userPersona,
+    bool hasCompletedOnboarding = false,
   }) async {
     try {
-      // Upload photo first if provided, get the download URL
       String? photoUrl;
       if (photoFile != null) {
         photoUrl = await _ds.uploadProfilePhoto(uid: uid, file: photoFile);
@@ -38,6 +45,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
         role: role,
         reraNumber: reraNumber,
         photoUrl: photoUrl,
+        accountType: accountType,
+        companyName: companyName,
+        address: address,
+        gstNo: gstNo,
+        orgId: orgId,
+        workingAreas: workingAreas,
+        userPersona: userPersona,
+        hasCompletedOnboarding: hasCompletedOnboarding,
       );
       return Right(user);
     } on StorageException catch (e) {
@@ -58,6 +73,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
     UserRole? role,
     String? reraNumber,
     File? photoFile,
+    List<String> dealCategories = const [],
+    List<String> propertyTypes = const [],
+    List<String> workingAreas = const [],
+    List<String> memberships = const [],
+    bool isProfilePublic = true,
+    String? userSubType,
+    List<String> preferredDealTypes = const [],
+    List<String> preferredPropertyTypes = const [],
   }) async {
     try {
       String? photoUrl;
@@ -73,6 +96,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
         role: role,
         reraNumber: reraNumber,
         photoUrl: photoUrl,
+        dealCategories: dealCategories,
+        propertyTypes: propertyTypes,
+        workingAreas: workingAreas,
+        memberships: memberships,
+        isProfilePublic: isProfilePublic,
+        userSubType: userSubType,
+        preferredDealTypes: preferredDealTypes,
+        preferredPropertyTypes: preferredPropertyTypes,
       );
       return Right(user);
     } on StorageException catch (e) {

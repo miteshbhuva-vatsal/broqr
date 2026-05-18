@@ -13,7 +13,7 @@ class ChatMessageModel extends ChatMessage {
   factory ChatMessageModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final d = doc.data()!;
+    final d = doc.data() ?? {};
     return ChatMessageModel(
       id: doc.id,
       senderId: d['senderId'] as String,

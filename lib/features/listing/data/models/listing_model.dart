@@ -28,14 +28,17 @@ class ListingModel extends Listing {
     super.posterRole,
     super.visibility,
     super.originalPrice,
+    super.instagramUrl,
+    super.pdfUrl,
     super.likesCount,
     super.commentsCount,
     super.viewsCount,
+    super.contactsCount,
   });
 
   factory ListingModel.fromFirestore(
       DocumentSnapshot<Map<String, dynamic>> doc,) {
-    final d = doc.data()!;
+    final d = doc.data() ?? {};
     return ListingModel(
       id: doc.id,
       brokerUid: d['brokerUid'] as String,
@@ -51,6 +54,8 @@ class ListingModel extends Listing {
       areaUnit: AreaUnit.fromString(d['areaUnit'] as String?),
       price: (d['price'] as num?)?.toDouble() ?? 0,
       originalPrice: (d['originalPrice'] as num?)?.toDouble(),
+      instagramUrl: d['instagramUrl'] as String?,
+      pdfUrl: d['pdfUrl'] as String?,
       description: d['description'] as String?,
       heroImageUrl: d['heroImageUrl'] as String? ?? '',
       additionalImageUrls: List<String>.from(d['additionalImageUrls'] ?? []),
@@ -62,6 +67,7 @@ class ListingModel extends Listing {
       likesCount: d['likesCount'] as int? ?? 0,
       commentsCount: d['commentsCount'] as int? ?? 0,
       viewsCount: d['viewsCount'] as int? ?? 0,
+      contactsCount: d['contactsCount'] as int? ?? 0,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -80,6 +86,8 @@ class ListingModel extends Listing {
         'areaUnit': areaUnit.name,
         'price': price,
         if (originalPrice != null) 'originalPrice': originalPrice,
+        if (instagramUrl != null && instagramUrl!.isNotEmpty) 'instagramUrl': instagramUrl,
+        if (pdfUrl != null && pdfUrl!.isNotEmpty) 'pdfUrl': pdfUrl,
         'description': description,
         'heroImageUrl': heroImageUrl,
         'additionalImageUrls': additionalImageUrls,
@@ -91,6 +99,7 @@ class ListingModel extends Listing {
         'likesCount': likesCount,
         'commentsCount': commentsCount,
         'viewsCount': viewsCount,
+        'contactsCount': contactsCount,
         'createdAt': Timestamp.fromDate(createdAt),
         'updatedAt': FieldValue.serverTimestamp(),
       };

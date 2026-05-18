@@ -10,8 +10,12 @@ import 'package:cpapp/features/auth/domain/entities/app_user.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
+import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
+import 'package:cpapp/features/listing/domain/entities/property_type.dart';
 import 'package:cpapp/features/listing/presentation/providers/listing_providers.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
+import 'package:cpapp/features/organisation/domain/entities/org_member.dart';
+import 'package:cpapp/features/organisation/presentation/providers/org_providers.dart';
 import 'package:cpapp/features/profile/presentation/providers/profile_providers.dart';
 import 'package:cpapp/shared/widgets/app_button.dart';
 
@@ -44,120 +48,303 @@ class _ProfileBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final leadsCount = ref.watch(crmProvider.select((s) => s.activeCount));
-    final l = AppLocalizations.of(context);
+
+    // ── Org display (name/role only — management moved to CRM screen) ─────────
+    final orgId = ref.watch(currentOrgIdProvider);
+    if (user.orgId != null && orgId == null) {
+      Future.microtask(
+        () => ref.read(currentOrgIdProvider.notifier).state = user.orgId,
+      );
+    }
+    final org = orgId != null ? ref.watch(watchCurrentOrgProvider).valueOrNull : null;
+    final callerMember = orgId != null ? ref.watch(currentOrgMemberProvider).valueOrNull : null;
+    final isOrgAdmin = org != null && org.adminUid == user.uid;
+    final callerRole = callerMember?.role ?? (isOrgAdmin ? OrgRole.admin : OrgRole.view);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
       body: CustomScrollView(
         slivers: [
-          _ProfileHeader(user: user),
+          _ProfileHeader(
+            user: user,
+            orgName: org?.orgName ?? user.companyName,
+            callerRole: org != null ? callerRole : null,
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _StatsRow(
-                    listings: user.listingsCount,
-                    connections: user.connectionsCount,
-                    leadsCount: leadsCount,
-                    onListingsTap: () => context.push(Routes.myListings),
-                    onNetworkTap: () => context.push(Routes.network),
-                    onLeadsTap: () => context.go(Routes.crm),
-                  ),
-                  const SizedBox(height: 16),
-                  _NetworkTile(connections: user.connectionsCount),
-                  const SizedBox(height: 28),
-                  _SectionTitle(l.contactInfo),
-                  const SizedBox(height: 12),
-                  _InfoTile(
-                    icon: Icons.phone_outlined,
-                    label: l.mobile,
-                    value: user.mobile != null
-                        ? '+91 ${user.mobile}'
-                        : l.notSet,
-                    isEmpty: user.mobile == null,
-                  ),
-                  const SizedBox(height: 10),
-                  _InfoTile(
-                    icon: Icons.email_outlined,
-                    label: l.email,
-                    value: user.email.isNotEmpty ? user.email : l.notSet,
-                    isEmpty: user.email.isEmpty,
-                  ),
-                  if (user.city != null) ...[
-                    const SizedBox(height: 10),
-                    _InfoTile(
-                      icon: Icons.location_city_outlined,
-                      label: l.city,
-                      value: user.city!,
-                    ),
-                  ],
-                  const SizedBox(height: 28),
-                  _SectionTitle(l.verification),
-                  const SizedBox(height: 12),
-                  if (user.reraNumber != null && user.reraNumber!.isNotEmpty) ...[
-                    _InfoTile(
-                      icon: Icons.verified_user_outlined,
-                      label: l.reraNumber,
-                      value: user.reraNumber!,
-                      valueColor: AppColors.success,
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  _VerificationBadgeTile(user: user),
-                  const SizedBox(height: 40),
-                  AppButton(
-                    label: l.signOut,
-                    variant: AppButtonVariant.outline,
-                    prefixIcon: const Icon(
-                      Icons.logout_rounded,
-                      size: 18,
-                      color: AppColors.error,
-                    ),
-                    onPressed: () => _confirmSignOut(context, ref),
-                  ),
-                  if (kDebugMode) ...[
-                    const SizedBox(height: 16),
-                    _SeedButton(user: user),
-                  ],
-                  const SizedBox(height: 32),
-                  _MyListingsSection(uid: user.uid, isDark: isDark),
-                ],
-              ),
+              child: user.isBuyer
+                  ? _BuyerContent(user: user, isDark: isDark, ref: ref, context: context)
+                  : _SellerContent(user: user, isDark: isDark, ref: ref, context: context),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
-    final l = AppLocalizations.of(context);
+// ── Buyer profile content ─────────────────────────────────────────────────────
+
+class _BuyerContent extends StatelessWidget {
+  const _BuyerContent({
+    required this.user,
+    required this.isDark,
+    required this.ref,
+    required this.context,
+  });
+  final AppUser user;
+  final bool isDark;
+  final WidgetRef ref;
+  final BuildContext context;
+
+  static const _subTypeLabel = {
+    'enduser':  ('🏡', 'Home Buyer'),
+    'investor': ('💰', 'Investor'),
+  };
+
+  @override
+  Widget build(BuildContext buildContext) {
+    final l = AppLocalizations.of(buildContext);
+    final (emoji, label) = _subTypeLabel[user.userSubType] ?? ('🏠', 'Buyer');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Buyer type badge ─────────────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.gold.withValues(alpha: 0.15),
+                AppColors.gold.withValues(alpha: 0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 32)),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: isDark ? AppColors.white : AppColors.navyDark,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'Buyer account',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 28),
+
+        // ── Contact info ─────────────────────────────────────────────────────
+        _SectionTitle(l.contactInfo),
+        const SizedBox(height: 12),
+        _InfoTile(
+          icon: Icons.phone_outlined,
+          label: l.mobile,
+          value: user.mobile != null ? '+91 ${user.mobile}' : l.notSet,
+          isEmpty: user.mobile == null,
+        ),
+        const SizedBox(height: 10),
+        _InfoTile(
+          icon: Icons.email_outlined,
+          label: l.email,
+          value: user.email.isNotEmpty ? user.email : l.notSet,
+          isEmpty: user.email.isEmpty,
+        ),
+        if (user.city != null) ...[
+          const SizedBox(height: 10),
+          _InfoTile(
+            icon: Icons.location_city_outlined,
+            label: l.city,
+            value: user.city!,
+          ),
+        ],
+
+        // ── Property preferences ─────────────────────────────────────────────
+        if (user.preferredDealTypes.isNotEmpty || user.preferredPropertyTypes.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          const _SectionTitle('Property Preferences'),
+          const SizedBox(height: 12),
+          if (user.preferredDealTypes.isNotEmpty) ...[
+            _PrefChipRow(
+              icon: Icons.category_outlined,
+              label: 'Deal types',
+              chips: user.preferredDealTypes.map((key) {
+                final cat = ListingCategory.values.where((c) => c.name == key).firstOrNull;
+                return cat != null ? '${cat.emoji} ${cat.label}' : key;
+              }).toList(),
+              isDark: isDark,
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (user.preferredPropertyTypes.isNotEmpty)
+            _PrefChipRow(
+              icon: Icons.home_work_outlined,
+              label: 'Property types',
+              chips: user.preferredPropertyTypes.map((key) {
+                final pt = PropertyType.values.where((p) => p.firestoreKey == key).firstOrNull;
+                return pt != null ? '${pt.emoji} ${pt.label}' : key;
+              }).toList(),
+              isDark: isDark,
+            ),
+        ],
+
+        const SizedBox(height: 40),
+        AppButton(
+          label: l.signOut,
+          variant: AppButtonVariant.outline,
+          prefixIcon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+          onPressed: () => _confirmSignOut(buildContext, ref),
+        ),
+        if (kDebugMode) ...[
+          const SizedBox(height: 16),
+          _SeedButton(user: user),
+        ],
+        const SizedBox(height: 32),
+        _MyInquirySection(isDark: isDark),
+      ],
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext ctx, WidgetRef r) async {
+    final l = AppLocalizations.of(ctx);
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
+      context: ctx,
+      builder: (d) => AlertDialog(
         title: Text(l.signOut),
         content: Text(l.signOutConfirm),
         actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: Text(l.cancel)),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              l.signOut,
-              style: const TextStyle(color: AppColors.error),
-            ),
+            onPressed: () => Navigator.pop(d, true),
+            child: Text(l.signOut, style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(authProvider.notifier).signOut();
-    }
+    if (confirmed == true) await r.read(authProvider.notifier).signOut();
+  }
+}
+
+// ── Seller / broker profile content ──────────────────────────────────────────
+
+class _SellerContent extends StatelessWidget {
+  const _SellerContent({
+    required this.user,
+    required this.isDark,
+    required this.ref,
+    required this.context,
+  });
+  final AppUser user;
+  final bool isDark;
+  final WidgetRef ref;
+  final BuildContext context;
+
+  @override
+  Widget build(BuildContext buildContext) {
+    final leadsCount = ref.watch(crmProvider.select((s) => s.activeCount));
+    final l = AppLocalizations.of(buildContext);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _StatsRow(
+          listings: user.listingsCount,
+          leadsCount: leadsCount,
+          onListingsTap: () => buildContext.push(Routes.myListings),
+          onLeadsTap: () => buildContext.go(Routes.crm),
+        ),
+        const SizedBox(height: 28),
+        _SectionTitle(l.contactInfo),
+        const SizedBox(height: 12),
+        _InfoTile(
+          icon: Icons.phone_outlined,
+          label: l.mobile,
+          value: user.mobile != null ? '+91 ${user.mobile}' : l.notSet,
+          isEmpty: user.mobile == null,
+        ),
+        const SizedBox(height: 10),
+        _InfoTile(
+          icon: Icons.email_outlined,
+          label: l.email,
+          value: user.email.isNotEmpty ? user.email : l.notSet,
+          isEmpty: user.email.isEmpty,
+        ),
+        if (user.city != null) ...[
+          const SizedBox(height: 10),
+          _InfoTile(
+            icon: Icons.location_city_outlined,
+            label: l.city,
+            value: user.city!,
+          ),
+        ],
+        const SizedBox(height: 28),
+        _SectionTitle(l.verification),
+        const SizedBox(height: 12),
+        if (user.reraNumber != null && user.reraNumber!.isNotEmpty) ...[
+          _InfoTile(
+            icon: Icons.verified_user_outlined,
+            label: l.reraNumber,
+            value: user.reraNumber!,
+            valueColor: AppColors.success,
+          ),
+          const SizedBox(height: 10),
+        ],
+        _VerificationBadgeTile(user: user),
+        const SizedBox(height: 40),
+        AppButton(
+          label: l.signOut,
+          variant: AppButtonVariant.outline,
+          prefixIcon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+          onPressed: () => _confirmSignOut(buildContext, ref),
+        ),
+        if (kDebugMode) ...[
+          const SizedBox(height: 16),
+          _SeedButton(user: user),
+        ],
+        const SizedBox(height: 32),
+        _MyListingsSection(uid: user.uid, isDark: isDark),
+      ],
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext ctx, WidgetRef r) async {
+    final l = AppLocalizations.of(ctx);
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      builder: (d) => AlertDialog(
+        title: Text(l.signOut),
+        content: Text(l.signOutConfirm),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: Text(l.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(d, true),
+            child: Text(l.signOut, style: const TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await r.read(authProvider.notifier).signOut();
   }
 }
 
@@ -181,13 +368,20 @@ class _SeedButton extends StatelessWidget {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.user});
+  const _ProfileHeader({
+    required this.user,
+    this.orgName,
+    this.callerRole,
+  });
   final AppUser user;
+  final String? orgName;
+  final OrgRole? callerRole;
 
   @override
   Widget build(BuildContext context) {
+    final hasOrg = orgName != null && orgName!.isNotEmpty;
     return SliverAppBar(
-      expandedHeight: 260,
+      expandedHeight: hasOrg ? 290 : 260,
       pinned: true,
       backgroundColor: AppColors.navyDark,
       actions: [
@@ -213,7 +407,7 @@ class _ProfileHeader extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      user.name.isNotEmpty ? user.name : 'Broker',
+                      user.name.isNotEmpty ? user.name : (user.isBuyer ? 'Buyer' : 'Broker'),
                       style: AppTypography.headlineSmall.copyWith(
                         color: AppColors.white,
                       ),
@@ -236,6 +430,62 @@ class _ProfileHeader extends StatelessWidget {
                       color: AppColors.textOnDarkSecondary,
                     ),
                   ),
+                if (hasOrg) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.business_rounded,
+                          size: 13,
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          orgName!,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (callerRole != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              callerRole!.label,
+                              style: const TextStyle(
+                                color: AppColors.gold,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -258,8 +508,7 @@ class _Avatar extends StatelessWidget {
     return CircleAvatar(
       radius: 48,
       backgroundColor: AppColors.gold,
-      backgroundImage:
-          user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+      backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
       child: user.photoUrl == null
           ? Text(
               initials.toUpperCase(),
@@ -276,17 +525,13 @@ class _Avatar extends StatelessWidget {
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
     required this.listings,
-    required this.connections,
     required this.leadsCount,
     required this.onListingsTap,
-    required this.onNetworkTap,
     required this.onLeadsTap,
   });
   final int listings;
-  final int connections;
   final int leadsCount;
   final VoidCallback onListingsTap;
-  final VoidCallback onNetworkTap;
   final VoidCallback onLeadsTap;
 
   @override
@@ -294,7 +539,8 @@ class _StatsRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l = AppLocalizations.of(context);
     final divider = Container(
-      width: 1, height: 48,
+      width: 1,
+      height: 48,
       color: isDark ? AppColors.borderDark : AppColors.border,
     );
 
@@ -316,19 +562,6 @@ class _StatsRow extends StatelessWidget {
                 value: listings.toString(),
                 label: l.listings,
                 icon: Icons.apartment_rounded,
-                showArrow: true,
-              ),
-            ),
-          ),
-          divider,
-          Expanded(
-            child: GestureDetector(
-              onTap: onNetworkTap,
-              behavior: HitTestBehavior.opaque,
-              child: _StatCell(
-                value: connections.toString(),
-                label: l.network,
-                icon: Icons.people_outline_rounded,
                 showArrow: true,
               ),
             ),
@@ -467,12 +700,8 @@ class _InfoTile extends StatelessWidget {
                   style: AppTypography.bodyMedium.copyWith(
                     color: isEmpty
                         ? AppColors.textHint
-                        : (valueColor ??
-                            (isDark
-                                ? AppColors.white
-                                : AppColors.textPrimary)),
-                    fontStyle:
-                        isEmpty ? FontStyle.italic : FontStyle.normal,
+                        : (valueColor ?? (isDark ? AppColors.white : AppColors.textPrimary)),
+                    fontStyle: isEmpty ? FontStyle.italic : FontStyle.normal,
                   ),
                 ),
               ],
@@ -493,7 +722,7 @@ class _MyListingsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final listingsAsync = ref.watch(brokerListingsProvider(uid));
+    final s = ref.watch(brokerListingsProvider(uid));
     final l = AppLocalizations.of(context);
 
     return Column(
@@ -503,13 +732,72 @@ class _MyListingsSection extends ConsumerWidget {
           children: [
             _SectionTitle(l.myListings),
             const Spacer(),
-            listingsAsync.whenOrNull(
-              data: (items) => Text(
-                '${items.length}',
+            if (!s.isLoading)
+              Text(
+                '${s.listings.length}',
                 style: AppTypography.labelSmall
                     .copyWith(color: AppColors.textSecondary),
               ),
-            ) ??
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (s.isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(color: AppColors.gold),
+            ),
+          )
+        else if (s.error != null)
+          Text(
+            l.couldNotLoadListings,
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+          )
+        else if (s.listings.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                l.noListingsYet,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textHint),
+              ),
+            ),
+          )
+        else
+          Column(
+            children: s.listings
+                .map((listing) => _ProfileListingTile(listing: listing, isDark: isDark))
+                .toList(),
+          ),
+      ],
+    );
+  }
+}
+
+// ── My Inquiry section (buyer profile) ────────────────────────────────────────
+
+class _MyInquirySection extends ConsumerWidget {
+  const _MyInquirySection({required this.isDark});
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listingsAsync = ref.watch(inquiredListingsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const _SectionTitle('My Inquiry'),
+            const Spacer(),
+            listingsAsync.whenOrNull(
+                  data: (items) => Text(
+                    '${items.length}',
+                    style: AppTypography.labelSmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                ) ??
                 const SizedBox.shrink(),
           ],
         ),
@@ -522,7 +810,7 @@ class _MyListingsSection extends ConsumerWidget {
             ),
           ),
           error: (_, __) => Text(
-            l.couldNotLoadListings,
+            'Could not load inquiries',
             style: AppTypography.bodySmall
                 .copyWith(color: AppColors.textSecondary),
           ),
@@ -532,7 +820,7 @@ class _MyListingsSection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    l.noListingsYet,
+                    'No inquiries yet',
                     style: AppTypography.bodySmall
                         .copyWith(color: AppColors.textHint),
                   ),
@@ -603,10 +891,7 @@ class _ProfileListingTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: listing.category.color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -672,6 +957,69 @@ class _ProfileListingTile extends StatelessWidget {
   }
 }
 
+// ── Preference chip row ───────────────────────────────────────────────────────
+
+class _PrefChipRow extends StatelessWidget {
+  const _PrefChipRow({
+    required this.icon,
+    required this.label,
+    required this.chips,
+    required this.isDark,
+  });
+  final IconData icon;
+  final String label;
+  final List<String> chips;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: chips.map((chip) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                chip,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isDark ? AppColors.gold : AppColors.navyDark,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+            ),).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Green-tick verification tile ─────────────────────────────────────────────
 
 class _VerificationBadgeTile extends ConsumerStatefulWidget {
@@ -683,8 +1031,7 @@ class _VerificationBadgeTile extends ConsumerStatefulWidget {
       _VerificationBadgeTileState();
 }
 
-class _VerificationBadgeTileState
-    extends ConsumerState<_VerificationBadgeTile> {
+class _VerificationBadgeTileState extends ConsumerState<_VerificationBadgeTile> {
   bool _requesting = false;
 
   Future<void> _applyForVerification() async {
@@ -736,8 +1083,7 @@ class _VerificationBadgeTileState
         ),
         child: Row(
           children: [
-            const Icon(Icons.verified_rounded,
-                color: AppColors.success, size: 22,),
+            const Icon(Icons.verified_rounded, color: AppColors.success, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -783,8 +1129,7 @@ class _VerificationBadgeTileState
               color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.verified_outlined,
-                color: AppColors.success, size: 22,),
+            child: const Icon(Icons.verified_outlined, color: AppColors.success, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -822,89 +1167,16 @@ class _VerificationBadgeTileState
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.success,
                     side: const BorderSide(color: AppColors.success),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6,),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     minimumSize: const Size(70, 32),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
                   child: Text(l.apply, style: const TextStyle(fontSize: 12)),
                 ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Network entry tile shown on profile ───────────────────────────────────────
-
-class _NetworkTile extends StatelessWidget {
-  const _NetworkTile({required this.connections});
-  final int connections;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l = AppLocalizations.of(context);
-
-    return GestureDetector(
-      onTap: () => context.push(Routes.network),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark : AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? AppColors.borderDark : AppColors.border,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.people_alt_rounded,
-                color: AppColors.gold,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.myNetwork,
-                    style: AppTypography.labelLarge.copyWith(
-                      color: isDark ? AppColors.white : AppColors.navyDark,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    connections > 0
-                        ? '$connections ${connections == 1 ? l.brokerConnected : l.brokersConnected}'
-                        : l.browseAndConnect,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textHint,
-              size: 20,
-            ),
-          ],
-        ),
       ),
     );
   }

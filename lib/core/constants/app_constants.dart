@@ -1,7 +1,7 @@
 /// App-wide string constants, limits, and config values.
 abstract final class AppConstants {
   // ── App meta ──────────────────────────────────────────────────────────────
-  static const String appName = 'CPApp';
+  static const String appName = 'DigiProp';
   static const String appTagline = 'Where Brokers Close Deals Faster';
 
   // ── Firestore collections ─────────────────────────────────────────────────
@@ -14,6 +14,16 @@ abstract final class AppConstants {
   static const String likesCollection = 'likes';
   static const String commentsCollection = 'comments';
   static const String viewsCollection = 'views';
+  static const String postsCollection = 'posts';
+  static const String localitiesCollection = 'localities';
+
+  // ── Organisation / multi-tenant CRM ──────────────────────────────────────
+  static const String organisationsCollection = 'organisations';
+  static const String orgMembersCollection = 'org_members';
+  static const String orgTeamsCollection = 'org_teams';
+  static const String orgInvitesCollection = 'org_invites';
+  static const String teamMembersSubcollection = 'team_members';
+  static const String leadActivitySubcollection = 'activity';
 
   // ── Storage paths ─────────────────────────────────────────────────────────
   static const String profileImagesPath = 'profile_images';
@@ -33,6 +43,16 @@ abstract final class AppConstants {
   // ── Lead / CRM ────────────────────────────────────────────────────────────
   static const int maxNoteLength = 1000;
 
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  static const int maxMessageLength = 4000;
+
+  // ── Deep links ────────────────────────────────────────────────────────────
+  static const int maxReferralCodeLength = 32;
+  static const String webDomain = 'www.digiprop.in';
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  static const Duration searchDebounceDelay = Duration(milliseconds: 300);
+
   // ── Image ─────────────────────────────────────────────────────────────────
   static const int imageQuality = 85;
   static const double maxImageWidth = 1080;
@@ -47,9 +67,9 @@ abstract final class AppConstants {
 
   // ── Share ─────────────────────────────────────────────────────────────────
   static const String shareTextTemplate =
-      '🏠 Check out this property deal on CPApp!\n\n'
+      '🏠 Check out this property deal on DigiProp!\n\n'
       '{title}\n{location}\n₹{price}\n\n'
-      'Download CPApp: https://cpapp.page.link/download';
+      'Download DigiProp: https://digiprop.in';
 
   // ── Backend API (Next.js admin panel) ────────────────────────────────────
   static const String apiBaseUrl = 'https://cpapp-admin-ouzg8.ondigitalocean.app';

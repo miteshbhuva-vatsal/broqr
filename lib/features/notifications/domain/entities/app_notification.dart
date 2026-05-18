@@ -4,6 +4,7 @@ enum NotificationType {
   connectionRequest,
   connectionAccepted,
   listingInquiry,
+  newLead,
   newListing,
   reminderDue,
   general;
@@ -16,6 +17,8 @@ enum NotificationType {
         return NotificationType.connectionAccepted;
       case 'listing_inquiry':
         return NotificationType.listingInquiry;
+      case 'new_lead':
+        return NotificationType.newLead;
       case 'new_listing':
         return NotificationType.newListing;
       case 'reminder_due':
@@ -33,6 +36,8 @@ enum NotificationType {
         return 'connection_accepted';
       case NotificationType.listingInquiry:
         return 'listing_inquiry';
+      case NotificationType.newLead:
+        return 'new_lead';
       case NotificationType.newListing:
         return 'new_listing';
       case NotificationType.reminderDue:

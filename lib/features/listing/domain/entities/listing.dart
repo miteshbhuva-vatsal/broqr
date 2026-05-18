@@ -77,9 +77,12 @@ class Listing extends Equatable {
     this.posterRole,
     this.visibility = ListingVisibility.all,
     this.originalPrice,
+    this.instagramUrl,
+    this.pdfUrl,
     this.likesCount = 0,
     this.commentsCount = 0,
     this.viewsCount = 0,
+    this.contactsCount = 0,
   });
 
   final String id;
@@ -98,6 +101,8 @@ class Listing extends Equatable {
   /// Optional market/MRP price. When set and > [price], the UI shows a
   /// strikethrough on this value and a discount badge.
   final double? originalPrice;
+  final String? instagramUrl;
+  final String? pdfUrl;
   final String? description;
   final String heroImageUrl;
   final List<String> additionalImageUrls;
@@ -109,6 +114,7 @@ class Listing extends Equatable {
   final int likesCount;
   final int commentsCount;
   final int viewsCount;
+  final int contactsCount;
   final DateTime createdAt;
 
   String get priceLabel {
@@ -139,6 +145,7 @@ class Listing extends Equatable {
     int? likesCount,
     int? commentsCount,
     int? viewsCount,
+    int? contactsCount,
     String? posterUrl,
     String? brokerageAmount,
     String? posterRole,
@@ -160,6 +167,8 @@ class Listing extends Equatable {
       areaUnit: areaUnit,
       price: price,
       originalPrice: originalPrice,
+      instagramUrl: instagramUrl,
+      pdfUrl: pdfUrl,
       description: description,
       heroImageUrl: heroImageUrl,
       additionalImageUrls: additionalImageUrls,
@@ -171,6 +180,7 @@ class Listing extends Equatable {
       likesCount: likesCount ?? this.likesCount,
       commentsCount: commentsCount ?? this.commentsCount,
       viewsCount: viewsCount ?? this.viewsCount,
+      contactsCount: contactsCount ?? this.contactsCount,
       createdAt: createdAt,
     );
   }

@@ -53,14 +53,14 @@ Future<void> main() async {
   runApp(
     // ProviderScope enables Riverpod throughout the widget tree
     const ProviderScope(
-      child: CPApp(),
+      child: DigiProp(),
     ),
   );
 }
 
 /// Root application widget.
-class CPApp extends ConsumerWidget {
-  const CPApp({super.key});
+class DigiProp extends ConsumerWidget {
+  const DigiProp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -87,6 +87,10 @@ class CPApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final locale = ref.watch(localeProvider);
 
+    // Wire up notification tap routing now that the GoRouter is ready.
+    // listenForTaps is guarded internally against multiple invocations.
+    FcmService.listenForTaps(router);
+
     // Forward every incoming deep link to the handler.
     ref.listen(deepLinkUriProvider, (_, next) {
       next.whenData((uri) => DeepLinkService.handle(uri, ref));
@@ -100,7 +104,7 @@ class CPApp extends ConsumerWidget {
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp.router(
-          title: 'CPApp',
+          title: 'DigiProp',
           debugShowCheckedModeBanner: false,
 
           // Localisation

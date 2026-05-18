@@ -154,7 +154,7 @@ abstract final class ListingPdfService {
                 borderRadius: pw.BorderRadius.circular(6),
               ),
               child: pw.Text(
-                'CPApp',
+                'DigiProp',
                 style: pw.TextStyle(
                   color: _navy,
                   fontSize: 9,
@@ -618,7 +618,7 @@ abstract final class ListingPdfService {
         color: _navy,
         alignment: pw.Alignment.center,
         child: pw.Text(
-          'CPApp  ·  ${DateFormat('d MMM yyyy').format(DateTime.now())}  ·  For informational purposes only',
+          'DigiProp  ·  ${DateFormat('d MMM yyyy').format(DateTime.now())}  ·  For informational purposes only',
           style: const pw.TextStyle(
             color: _white40,
             fontSize: 7,

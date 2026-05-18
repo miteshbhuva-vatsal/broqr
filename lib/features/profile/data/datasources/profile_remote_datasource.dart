@@ -12,9 +12,17 @@ abstract interface class ProfileRemoteDataSource {
     required String name,
     required String mobile,
     required String city,
-    required UserRole role,
+    UserRole? role,
     String? reraNumber,
     String? photoUrl,
+    String accountType = 'individual',
+    String? companyName,
+    String? address,
+    String? gstNo,
+    String? orgId,
+    List<String> workingAreas = const [],
+    String? userPersona,
+    bool hasCompletedOnboarding = false,
   });
 
   Future<UserModel> updateProfile({
@@ -25,6 +33,14 @@ abstract interface class ProfileRemoteDataSource {
     UserRole? role,
     String? reraNumber,
     String? photoUrl,
+    List<String> dealCategories = const [],
+    List<String> propertyTypes = const [],
+    List<String> workingAreas = const [],
+    List<String> memberships = const [],
+    bool isProfilePublic = true,
+    String? userSubType,
+    List<String> preferredDealTypes = const [],
+    List<String> preferredPropertyTypes = const [],
   });
 
   Future<String> uploadProfilePhoto({required String uid, required File file});
@@ -55,26 +71,47 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     required String name,
     required String mobile,
     required String city,
-    required UserRole role,
+    UserRole? role,
     String? reraNumber,
     String? photoUrl,
+    String accountType = 'individual',
+    String? companyName,
+    String? address,
+    String? gstNo,
+    String? orgId,
+    List<String> workingAreas = const [],
+    String? userPersona,
+    bool hasCompletedOnboarding = false,
   }) async {
     try {
       final updates = <String, dynamic>{
+        'uid': uid,
         'name': name.trim(),
         'mobile': mobile.trim(),
         'city': city.trim(),
         'reraNumber': reraNumber?.trim(),
-        'role': role.name,
+        if (role != null) 'role': role.name,
         'isProfileComplete': true,
+        'accountType': accountType,
         'updatedAt': FieldValue.serverTimestamp(),
+        if (companyName != null) 'companyName': companyName.trim(),
+        if (address != null) 'address': address.trim(),
+        if (gstNo != null) 'gstNo': gstNo.trim(),
+        if (orgId != null) 'orgId': orgId,
+        if (workingAreas.isNotEmpty) 'workingAreas': workingAreas,
+        if (userPersona != null) 'userPersona': userPersona,
+        if (hasCompletedOnboarding) 'hasCompletedOnboarding': true,
+        if (hasCompletedOnboarding) 'hasConfirmedAccountType': true,
+        if (hasCompletedOnboarding) 'hasSetupTeam': true,
       };
       if (photoUrl != null) updates['photoUrl'] = photoUrl;
 
+      // Use set+merge so the write succeeds even if the doc doesn't exist yet
+      // (OTP users have no Firestore doc until completeProfile is called).
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(uid)
-          .update(updates);
+          .set(updates, SetOptions(merge: true));
 
       return fetchProfile(uid);
     } catch (e) {
@@ -111,6 +148,14 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     UserRole? role,
     String? reraNumber,
     String? photoUrl,
+    List<String> dealCategories = const [],
+    List<String> propertyTypes = const [],
+    List<String> workingAreas = const [],
+    List<String> memberships = const [],
+    bool isProfilePublic = true,
+    String? userSubType,
+    List<String> preferredDealTypes = const [],
+    List<String> preferredPropertyTypes = const [],
   }) async {
     try {
       final updates = <String, dynamic>{
@@ -119,9 +164,18 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
         'city': city.trim(),
         'reraNumber': reraNumber?.trim(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'dealCategories': dealCategories,
+        'propertyTypes': propertyTypes,
+        'workingAreas': workingAreas,
+        'memberships': memberships,
+        'isProfilePublic': isProfilePublic,
       };
+
       if (role != null) updates['role'] = role.name;
       if (photoUrl != null) updates['photoUrl'] = photoUrl;
+      if (userSubType != null) updates['userSubType'] = userSubType;
+      if (preferredDealTypes.isNotEmpty) updates['preferredDealTypes'] = preferredDealTypes;
+      if (preferredPropertyTypes.isNotEmpty) updates['preferredPropertyTypes'] = preferredPropertyTypes;
 
       await _firestore
           .collection(AppConstants.usersCollection)

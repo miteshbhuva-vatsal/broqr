@@ -20,7 +20,7 @@ class AppLocalizations {
     // ── English ──────────────────────────────────────────────────────────────
     'en': {
       // Common
-      'appName': 'CPApp',
+      'appName': 'DigiProp',
       'ok': 'OK',
       'cancel': 'Cancel',
       'save': 'Save',
@@ -33,7 +33,7 @@ class AppLocalizations {
       'retry': 'Retry',
       'done': 'Done',
       // Login
-      'welcomeTitle': 'Welcome to CPApp',
+      'welcomeTitle': 'Welcome to DigiProp',
       'welcomeSubtitle': 'Sign in to access exclusive broker deals',
       'signInWith': 'Sign in with',
       'continueWithGoogle': 'Continue with Google',
@@ -108,10 +108,32 @@ class AppLocalizations {
       'couldNotLoadListings': 'Could not load listings',
       // Shell / nav
       'navFeed': 'Feed',
-      'navNews': 'News',
+      'navAsk': 'Ask',
       'navPost': 'Post',
       'navReminders': 'Reminders',
       'navCrm': 'CRM',
+      'navProfile': 'Profile',
+      // Ask community
+      'askTitle': 'Ask',
+      'askComposeHint': "What's on your mind?",
+      'askPost': 'Post',
+      'askPosting': 'Posting…',
+      'askAddPhoto': 'Add photo',
+      'askChangePhoto': 'Change photo',
+      'askRemovePhoto': 'Remove',
+      'askLikes': 'Likes',
+      'askComments': 'Comments',
+      'askWriteComment': 'Write a comment…',
+      'askSend': 'Send',
+      'askEmptyTitle': 'No posts yet',
+      'askEmptySubtitle': 'Be the first to share an update with your network.',
+      'askDelete': 'Delete post',
+      'askDeleteConfirm': 'Delete this post?',
+      'askPostFailed': 'Could not publish post. Try again.',
+      'askEdit': 'Edit post',
+      'askSave': 'Save',
+      'askSaving': 'Saving…',
+      'askEditFailed': 'Could not save changes. Try again.',
       // Feed
       'feedTitle': 'Property Feed',
       'inquiry': 'Inquiry',
@@ -287,6 +309,7 @@ class AppLocalizations {
       'propertyDetails': 'Property Details',
       'fillDetailsDesc': 'Fill in the details brokers need to evaluate your deal.',
       'projectSchemeName': 'Project / Scheme Name',
+      'listingTitle': 'Title',
       'cityRequired': 'City',
       'selectCityHint': 'Select city',
       'locationSociety': 'Location / Society',
@@ -319,12 +342,89 @@ class AppLocalizations {
       'markAllRead': 'Mark all read',
       'noNotificationsYet': 'No notifications yet',
       'notificationsSubtitle': 'Connection requests and updates will appear here',
+      // Realtors tab
+      'navRealtors': 'Realtors',
+      // Network — kept for legacy string lookups
+      'navNetwork': 'Network',
+      'connect': 'Connect',
+      'connected': 'Connected',
+      'pendingRequest': 'Pending',
+      'cancelRequest': 'Cancel',
+      'acceptRequest': 'Accept',
+      'declineRequest': 'Decline',
+      'requests': 'Requests',
+      'noRequests': 'No pending requests',
+      'inviteToApp': 'Invite to DigiProp',
+      'inviteContact': 'Invite',
+      'contactsPermission': 'Allow Contacts Access',
+      'contactsPermissionDesc':
+          'Let DigiProp see your contacts so you can invite colleagues easily.',
+      'shareInviteLink': 'Share Invite Link',
+      'inviteMsg':
+          'Hey! Join me on DigiProp — the broker network for real estate deals. Download: https://digiprop.in',
+      // Login flow — new screens
+      'continueWithMobile': 'Continue with Mobile',
+      // Persona selection
+      'personaWelcomeTitle': 'Welcome to DigiProp',
+      'personaWelcomeSubtitle': 'Real estate, the way you need it.',
+      'personaWhatsYou': 'What describes you best?',
+      'personaPersonaliseSearch': 'This helps us personalise your search',
+      'personaYourRole': "What's your role?",
+      'personaTailorWorkspace': "We'll tailor your workspace for you",
+      'personaContinue': 'Continue',
+      'personaSetupProfile': 'Set Up My Profile',
+      'personaBuyerTitle': "I'm looking to Buy",
+      'personaBuyerSubtitle': 'Find properties, explore listings, invest smart',
+      'personaSellerTitle': "I'm here to Sell / List",
+      'personaSellerSubtitle': 'Post properties, manage leads, grow your business',
+      'subHomeBuyer': 'Home Buyer',
+      'subHomeBuyerHint': 'First home, upgrade, or relocation',
+      'subInvestorBuyer': 'Investor',
+      'subInvestorBuyerHint': 'Rental yield, capital appreciation',
+      'subPropertyOwner': 'Property Owner',
+      'subPropertyOwnerHint': 'Sell or rent your property directly',
+      'subBrokerAgent': 'Broker / Agent',
+      'subBrokerAgentHint': 'Licensed real estate professional',
+      'subBuilder': 'Builder / Developer',
+      'subBuilderHint': 'Projects, launches, inventory',
+      'subInvestorSeller': 'Investor',
+      'subInvestorSellerHint': 'Buy, hold, and trade properties',
+      // Buyer onboarding
+      'buyerStep': 'Step 3 of 3',
+      'buyerOnboardingTitle': 'What are you\nlooking for?',
+      'buyerOnboardingSubtitle': "We'll show you the most relevant properties first.",
+      'buyerPropType': 'Property Type',
+      'buyerLookingTo': 'Looking To',
+      'selectAllApply': 'Select all that apply',
+      'chipApartment': 'Apartment',
+      'chipVilla': 'Villa',
+      'chipPlot': 'Plot / Land',
+      'chipOffice': 'Office',
+      'chipShop': 'Shop',
+      'chipWarehouse': 'Warehouse',
+      'chipFarmhouse': 'Farmhouse',
+      'chipStudio': 'Studio',
+      'chipBuy': 'Buy',
+      'chipRent': 'Rent',
+      'chipLease': 'Lease',
+      'showMeProperties': 'Show Me Properties',
+      // Seller onboarding
+      'sellerWelcomeTo': 'Welcome to',
+      'sellerPropertyMarket': 'Property Market',
+      'sellerProfileReady': "Your seller profile is ready. Here's what you can do right away.",
+      'sellerFeature1Title': 'Post Properties',
+      'sellerFeature1Sub': 'List your properties and reach thousands of buyers.',
+      'sellerFeature2Title': 'Connect with Buyers',
+      'sellerFeature2Sub': 'Get inquiries directly and manage every lead from the CRM.',
+      'sellerFeature3Title': 'Ask the Community',
+      'sellerFeature3Sub': 'Post market questions and share knowledge with other sellers.',
+      'startExploring': 'Start Exploring',
     },
 
     // ── Hindi ─────────────────────────────────────────────────────────────────
     'hi': {
       // Common
-      'appName': 'CPApp',
+      'appName': 'DigiProp',
       'ok': 'ठीक है',
       'cancel': 'रद्द करें',
       'save': 'सेव करें',
@@ -337,7 +437,7 @@ class AppLocalizations {
       'retry': 'पुनः प्रयास करें',
       'done': 'हो गया',
       // Login
-      'welcomeTitle': 'CPApp में आपका स्वागत है',
+      'welcomeTitle': 'DigiProp में आपका स्वागत है',
       'welcomeSubtitle': 'एक्सक्लूसिव ब्रोकर डील तक पहुंचने के लिए साइन इन करें',
       'signInWith': 'साइन इन करें',
       'continueWithGoogle': 'Google से जारी रखें',
@@ -411,10 +511,32 @@ class AppLocalizations {
       'couldNotLoadListings': 'लिस्टिंग लोड नहीं हो सकी',
       // Shell / nav
       'navFeed': 'फीड',
-      'navNews': 'समाचार',
+      'navAsk': 'चर्चा',
       'navPost': 'पोस्ट',
       'navReminders': 'रिमाइंडर',
       'navCrm': 'CRM',
+      'navProfile': 'प्रोफाइल',
+      // Ask community
+      'askTitle': 'चर्चा',
+      'askComposeHint': 'आप क्या सोच रहे हैं?',
+      'askPost': 'पोस्ट करें',
+      'askPosting': 'पोस्ट हो रहा है…',
+      'askAddPhoto': 'फोटो जोड़ें',
+      'askChangePhoto': 'फोटो बदलें',
+      'askRemovePhoto': 'हटाएँ',
+      'askLikes': 'लाइक',
+      'askComments': 'टिप्पणियाँ',
+      'askWriteComment': 'टिप्पणी लिखें…',
+      'askSend': 'भेजें',
+      'askEmptyTitle': 'अभी कोई पोस्ट नहीं',
+      'askEmptySubtitle': 'अपने नेटवर्क के साथ कुछ साझा करने वाले पहले बनें।',
+      'askDelete': 'पोस्ट हटाएँ',
+      'askDeleteConfirm': 'क्या आप यह पोस्ट हटाना चाहते हैं?',
+      'askPostFailed': 'पोस्ट नहीं हो सकी। फिर से कोशिश करें।',
+      'askEdit': 'पोस्ट संपादित करें',
+      'askSave': 'सहेजें',
+      'askSaving': 'सहेज रहे हैं…',
+      'askEditFailed': 'परिवर्तन सहेजे नहीं जा सके। फिर से कोशिश करें।',
       // Feed
       'feedTitle': 'प्रॉपर्टी फीड',
       'inquiry': 'जांच करें',
@@ -583,6 +705,7 @@ class AppLocalizations {
       'propertyDetails': 'संपत्ति विवरण',
       'fillDetailsDesc': 'वे विवरण भरें जो ब्रोकर को आपकी डील का मूल्यांकन करने में मदद करें।',
       'projectSchemeName': 'प्रोजेक्ट / योजना का नाम',
+      'listingTitle': 'शीर्षक',
       'cityRequired': 'शहर',
       'selectCityHint': 'शहर चुनें',
       'locationSociety': 'स्थान / सोसायटी',
@@ -614,12 +737,86 @@ class AppLocalizations {
       'markAllRead': 'सभी पढ़े गए',
       'noNotificationsYet': 'अभी कोई अधिसूचना नहीं',
       'notificationsSubtitle': 'कनेक्शन अनुरोध और अपडेट यहाँ दिखेंगे',
+      'navRealtors': 'रियल्टर्स',
+      // Network — kept for legacy string lookups
+      'navNetwork': 'नेटवर्क',
+      'connect': 'कनेक्ट',
+      'connected': 'कनेक्टेड',
+      'pendingRequest': 'पेंडिंग',
+      'cancelRequest': 'रद्द करें',
+      'acceptRequest': 'स्वीकार',
+      'declineRequest': 'अस्वीकार',
+      'requests': 'अनुरोध',
+      'noRequests': 'कोई अनुरोध नहीं',
+      'inviteToApp': 'DigiProp पर आमंत्रित करें',
+      'inviteContact': 'आमंत्रित',
+      'contactsPermission': 'संपर्क अनुमति',
+      'contactsPermissionDesc': 'सहकर्मियों को आमंत्रित करने के लिए संपर्क एक्सेस दें।',
+      'shareInviteLink': 'लिंक शेयर करें',
+      'inviteMsg': 'हे! DigiProp से जुड़ें। डाउनलोड करें: https://digiprop.in',
+      // Login flow — new screens
+      'continueWithMobile': 'मोबाइल से जारी रखें',
+      // Persona selection
+      'personaWelcomeTitle': 'DigiProp में आपका स्वागत है',
+      'personaWelcomeSubtitle': 'रियल एस्टेट, जैसा आप चाहते हैं।',
+      'personaWhatsYou': 'आपका सबसे अच्छा वर्णन क्या है?',
+      'personaPersonaliseSearch': 'यह हमें आपकी खोज को व्यक्तिगत बनाने में मदद करता है',
+      'personaYourRole': 'आपकी भूमिका क्या है?',
+      'personaTailorWorkspace': 'हम आपके लिए वर्कस्पेस तैयार करेंगे',
+      'personaContinue': 'जारी रखें',
+      'personaSetupProfile': 'मेरा प्रोफाइल सेट करें',
+      'personaBuyerTitle': 'मैं खरीदना चाहता/चाहती हूं',
+      'personaBuyerSubtitle': 'संपत्ति खोजें, लिस्टिंग देखें, स्मार्ट निवेश करें',
+      'personaSellerTitle': 'मैं बेचने / लिस्ट करने के लिए यहां हूं',
+      'personaSellerSubtitle': 'संपत्ति पोस्ट करें, लीड मैनेज करें, व्यवसाय बढ़ाएं',
+      'subHomeBuyer': 'घर खरीदार',
+      'subHomeBuyerHint': 'पहला घर, अपग्रेड, या स्थानांतरण',
+      'subInvestorBuyer': 'निवेशक',
+      'subInvestorBuyerHint': 'किराया आय, पूंजी मूल्यवृद्धि',
+      'subPropertyOwner': 'संपत्ति मालिक',
+      'subPropertyOwnerHint': 'संपत्ति सीधे बेचें या किराए पर दें',
+      'subBrokerAgent': 'ब्रोकर / एजेंट',
+      'subBrokerAgentHint': 'लाइसेंसधारी रियल एस्टेट प्रोफेशनल',
+      'subBuilder': 'बिल्डर / डेवलपर',
+      'subBuilderHint': 'प्रोजेक्ट, लॉन्च, इन्वेंट्री',
+      'subInvestorSeller': 'निवेशक',
+      'subInvestorSellerHint': 'संपत्ति खरीदें, होल्ड करें और ट्रेड करें',
+      // Buyer onboarding
+      'buyerStep': 'चरण 3 में से 3',
+      'buyerOnboardingTitle': 'आप क्या\nखोज रहे हैं?',
+      'buyerOnboardingSubtitle': 'हम आपको सबसे प्रासंगिक संपत्तियां पहले दिखाएंगे।',
+      'buyerPropType': 'संपत्ति प्रकार',
+      'buyerLookingTo': 'इरादा',
+      'selectAllApply': 'सभी लागू चुनें',
+      'chipApartment': 'अपार्टमेंट',
+      'chipVilla': 'विला',
+      'chipPlot': 'प्लॉट / जमीन',
+      'chipOffice': 'ऑफिस',
+      'chipShop': 'दुकान',
+      'chipWarehouse': 'गोदाम',
+      'chipFarmhouse': 'फार्महाउस',
+      'chipStudio': 'स्टूडियो',
+      'chipBuy': 'खरीदें',
+      'chipRent': 'किराया',
+      'chipLease': 'लीज',
+      'showMeProperties': 'संपत्तियां दिखाएं',
+      // Seller onboarding
+      'sellerWelcomeTo': 'आपका स्वागत है',
+      'sellerPropertyMarket': 'प्रॉपर्टी मार्केट में',
+      'sellerProfileReady': 'आपका सेलर प्रोफाइल तैयार है। अभी यह करें।',
+      'sellerFeature1Title': 'संपत्ति पोस्ट करें',
+      'sellerFeature1Sub': 'अपनी संपत्तियां लिस्ट करें और हजारों खरीदारों तक पहुंचें।',
+      'sellerFeature2Title': 'खरीदारों से जुड़ें',
+      'sellerFeature2Sub': 'सीधे इन्क्वायरी पाएं और CRM से हर लीड मैनेज करें।',
+      'sellerFeature3Title': 'समुदाय से पूछें',
+      'sellerFeature3Sub': 'बाजार के सवाल पूछें और अन्य विक्रेताओं के साथ ज्ञान साझा करें।',
+      'startExploring': 'शुरू करें',
     },
 
     // ── Gujarati ──────────────────────────────────────────────────────────────
     'gu': {
       // Common
-      'appName': 'CPApp',
+      'appName': 'DigiProp',
       'ok': 'ઠીક છે',
       'cancel': 'રદ કરો',
       'save': 'સેવ કરો',
@@ -632,7 +829,7 @@ class AppLocalizations {
       'retry': 'ફરી પ્રયાસ કરો',
       'done': 'થઈ ગ્યું',
       // Login
-      'welcomeTitle': 'CPApp માં આપનું સ્વાગત છે',
+      'welcomeTitle': 'DigiProp માં આપનું સ્વાગત છે',
       'welcomeSubtitle': 'એક્સક્લુઝિવ બ્રોકર ડીલ્સ ઍક્સેસ કરવા સાઇન ઇન કરો',
       'signInWith': 'સાઇન ઇન કરો',
       'continueWithGoogle': 'Google સાથે ચાલુ રાખો',
@@ -707,10 +904,32 @@ class AppLocalizations {
       'couldNotLoadListings': 'લિસ્ટિંગ લોડ ન થઈ',
       // Shell / nav
       'navFeed': 'ફીડ',
-      'navNews': 'સમાચાર',
+      'navAsk': 'ચર્ચા',
       'navPost': 'પોસ્ટ',
       'navReminders': 'રિમાઇન્ડર',
       'navCrm': 'CRM',
+      'navProfile': 'પ્રોફાઇલ',
+      // Ask community
+      'askTitle': 'ચર્ચા',
+      'askComposeHint': 'તમે શું વિચારી રહ્યા છો?',
+      'askPost': 'પોસ્ટ કરો',
+      'askPosting': 'પોસ્ટ થઈ રહ્યું છે…',
+      'askAddPhoto': 'ફોટો ઉમેરો',
+      'askChangePhoto': 'ફોટો બદલો',
+      'askRemovePhoto': 'દૂર કરો',
+      'askLikes': 'લાઇક',
+      'askComments': 'ટિપ્પણીઓ',
+      'askWriteComment': 'ટિપ્પણી લખો…',
+      'askSend': 'મોકલો',
+      'askEmptyTitle': 'હજી કોઈ પોસ્ટ નથી',
+      'askEmptySubtitle': 'તમારા નેટવર્ક સાથે પહેલી પોસ્ટ શેર કરો.',
+      'askDelete': 'પોસ્ટ કાઢી નાખો',
+      'askDeleteConfirm': 'આ પોસ્ટ કાઢી નાખવી છે?',
+      'askPostFailed': 'પોસ્ટ થઈ શકી નહીં. ફરી પ્રયાસ કરો.',
+      'askEdit': 'પોસ્ટ સંપાદિત કરો',
+      'askSave': 'સાચવો',
+      'askSaving': 'સાચવી રહ્યા છીએ…',
+      'askEditFailed': 'ફેરફાર સાચવી શકાયા નહીં. ફરી પ્રયાસ કરો.',
       // Feed
       'feedTitle': 'પ્રોપર્ટી ફીડ',
       'inquiry': 'ઇન્ક્વાયરી',
@@ -879,6 +1098,7 @@ class AppLocalizations {
       'propertyDetails': 'મિલકત વિગત',
       'fillDetailsDesc': 'તે વિગત ભરો જે બ્રોકરને તમારી ડીલ મૂલ્યાંકન કરવામાં મદદ કરે.',
       'projectSchemeName': 'પ્રોજેક્ટ / યોજનાનું નામ',
+      'listingTitle': 'શીર્ષક',
       'cityRequired': 'શહેર',
       'selectCityHint': 'શહેર પસંદ કરો',
       'locationSociety': 'સ્થળ / સોસાયટી',
@@ -910,6 +1130,80 @@ class AppLocalizations {
       'markAllRead': 'બધા વાંચ્યા',
       'noNotificationsYet': 'હજી કોઈ સૂચના નથી',
       'notificationsSubtitle': 'કનેક્શન વિનંતી અને અપડેટ અહીં દેખાશે',
+      // Network — new
+      'navRealtors': 'રિઅલ્ટર્સ',
+      'navNetwork': 'નેટવર્ક',
+      'connect': 'કનેક્ટ',
+      'connected': 'કનેક્ટ થયેલ',
+      'pendingRequest': 'પેન્ડિંગ',
+      'cancelRequest': 'રદ કરો',
+      'acceptRequest': 'સ્વીકારો',
+      'declineRequest': 'નકારો',
+      'requests': 'વિનંતીઓ',
+      'noRequests': 'કોઈ વિનંતી નથી',
+      'inviteToApp': 'DigiProp પર આમંત્રિત કરો',
+      'inviteContact': 'આમંત્રિત',
+      'contactsPermission': 'સંપર્ક પરવાનગી',
+      'contactsPermissionDesc': 'સહકર્મીઓને આમંત્રિત કરવા માટે સંપર્ક ઍક્સેસ આપો.',
+      'shareInviteLink': 'લિંક શેર કરો',
+      'inviteMsg': 'DigiProp સાથે જોડાઓ: https://digiprop.in',
+      // Login flow — new screens
+      'continueWithMobile': 'મોબાઇલ સાથે ચાલુ રાખો',
+      // Persona selection
+      'personaWelcomeTitle': 'DigiProp માં આપનું સ્વાગત છે',
+      'personaWelcomeSubtitle': 'રિઅલ એસ્ટેટ, જ્યારે તમને જરૂર હોય ત્યારે.',
+      'personaWhatsYou': 'તમારો સૌથી સારો પરિચય શું છે?',
+      'personaPersonaliseSearch': 'આ અમને તમારી શોધ વ્યક્તિગત બનાવવામાં મદદ કરે છે',
+      'personaYourRole': 'તમારી ભૂમિકા શું છે?',
+      'personaTailorWorkspace': 'અમે તમારા માટે વર્કસ્પેસ કસ્ટમાઇઝ કરીશું',
+      'personaContinue': 'આગળ વધો',
+      'personaSetupProfile': 'પ્રોફાઇલ સેટ કરો',
+      'personaBuyerTitle': 'હું ખરીદવા માંગુ છું',
+      'personaBuyerSubtitle': 'ઘર શોધો, લિસ્ટિંગ જુઓ, સ્માર્ટ રોકાણ કરો',
+      'personaSellerTitle': 'હું વેચવા / લિસ્ટ કરવા અહીં છું',
+      'personaSellerSubtitle': 'પ્રોપર્ટી પ્રકાશિત કરો, લીડ મેનેજ કરો, ધંધો વધારો',
+      'subHomeBuyer': 'ઘર ખરીદનાર',
+      'subHomeBuyerHint': 'પ્રથમ ઘર, અપગ્રેડ, અથવા સ્થળ-ફેર',
+      'subInvestorBuyer': 'રોકાણકાર',
+      'subInvestorBuyerHint': 'ભાડું આવક, મૂડી વૃદ્ધિ',
+      'subPropertyOwner': 'મિલકત માલિક',
+      'subPropertyOwnerHint': 'મિલકત સીધી વેચો અથવા ભાડે આપો',
+      'subBrokerAgent': 'બ્રોકર / એજન્ટ',
+      'subBrokerAgentHint': 'લાઇસન્સ ધારી રિઅલ એસ્ટેટ વ્યાવસાયિક',
+      'subBuilder': 'બિલ્ડર / ડેવલપર',
+      'subBuilderHint': 'પ્રોજેક્ટ, લૉન્ચ, ઇન્વૅન્ટ્રી',
+      'subInvestorSeller': 'રોકાણકાર',
+      'subInvestorSellerHint': 'મિલકત ખરીદો, હોલ્ડ કરો અને ટ્રેડ કરો',
+      // Buyer onboarding
+      'buyerStep': 'પગલું ૩ માંથી ૩',
+      'buyerOnboardingTitle': 'તમે શું\nશોધી રહ્યા છો?',
+      'buyerOnboardingSubtitle': 'અમે તમને સૌથી પ્રસ્તુત પ્રોપર્ટી પ્રથમ બતાવીશું.',
+      'buyerPropType': 'મિલકત પ્રકાર',
+      'buyerLookingTo': 'ઇરાદો',
+      'selectAllApply': 'બધા લાગુ પડે તે પસંદ કરો',
+      'chipApartment': 'એપાર્ટમેન્ટ',
+      'chipVilla': 'વિલા',
+      'chipPlot': 'પ્લૉટ / જમીન',
+      'chipOffice': 'ઑફિસ',
+      'chipShop': 'દુકાન',
+      'chipWarehouse': 'ગોદામ',
+      'chipFarmhouse': 'ફૉર્મહાઉસ',
+      'chipStudio': 'સ્ટુડિઓ',
+      'chipBuy': 'ખરીદો',
+      'chipRent': 'ભાડું',
+      'chipLease': 'લીઝ',
+      'showMeProperties': 'પ્રોપર્ટી બતાવો',
+      // Seller onboarding
+      'sellerWelcomeTo': 'આપનું સ્વાગત છે',
+      'sellerPropertyMarket': 'પ્રોપર્ટી માર્કેટ',
+      'sellerProfileReady': 'તમારી સેલર પ્રોફાઇલ તૈયાર છે. હવે આ કરો.',
+      'sellerFeature1Title': 'મિલકત પોસ્ટ કરો',
+      'sellerFeature1Sub': 'તમારી મિલકત લિસ્ટ કરો અને હજારો ખરીદારો સુધી પહોંચો.',
+      'sellerFeature2Title': 'ખરીદારો સાથે જોડાઓ',
+      'sellerFeature2Sub': 'સીધી ઇન્ક્વાયરી મેળવો અને CRM થી દરેક લીડ મેનેજ કરો.',
+      'sellerFeature3Title': 'સમુદાયને પૂછો',
+      'sellerFeature3Sub': 'બાઝારના સવાલ પૂછો અને અન્ય વિક્રેતાઓ સાથે જ્ઞાન શૅર કરો.',
+      'startExploring': 'અન્વેષણ કરો',
     },
   };
 
@@ -1001,10 +1295,32 @@ class AppLocalizations {
   String get couldNotLoadListings => _s('couldNotLoadListings');
   // Shell / nav
   String get navFeed => _s('navFeed');
-  String get navNews => _s('navNews');
+  String get navAsk => _s('navAsk');
   String get navPost => _s('navPost');
   String get navReminders => _s('navReminders');
   String get navCrm => _s('navCrm');
+  String get navProfile => _s('navProfile');
+  // Ask community
+  String get askTitle => _s('askTitle');
+  String get askComposeHint => _s('askComposeHint');
+  String get askPost => _s('askPost');
+  String get askPosting => _s('askPosting');
+  String get askAddPhoto => _s('askAddPhoto');
+  String get askChangePhoto => _s('askChangePhoto');
+  String get askRemovePhoto => _s('askRemovePhoto');
+  String get askLikes => _s('askLikes');
+  String get askComments => _s('askComments');
+  String get askWriteComment => _s('askWriteComment');
+  String get askSend => _s('askSend');
+  String get askEmptyTitle => _s('askEmptyTitle');
+  String get askEmptySubtitle => _s('askEmptySubtitle');
+  String get askDelete => _s('askDelete');
+  String get askDeleteConfirm => _s('askDeleteConfirm');
+  String get askPostFailed => _s('askPostFailed');
+  String get askEdit => _s('askEdit');
+  String get askSave => _s('askSave');
+  String get askSaving => _s('askSaving');
+  String get askEditFailed => _s('askEditFailed');
   // Feed
   String get feedTitle => _s('feedTitle');
   String get inquiry => _s('inquiry');
@@ -1173,6 +1489,7 @@ class AppLocalizations {
   String get propertyDetails => _s('propertyDetails');
   String get fillDetailsDesc => _s('fillDetailsDesc');
   String get projectSchemeName => _s('projectSchemeName');
+  String get listingTitle => _s('listingTitle');
   String get cityRequired => _s('cityRequired');
   String get selectCityHint => _s('selectCityHint');
   String get locationSociety => _s('locationSociety');
@@ -1204,6 +1521,79 @@ class AppLocalizations {
   String get markAllRead => _s('markAllRead');
   String get noNotificationsYet => _s('noNotificationsYet');
   String get notificationsSubtitle => _s('notificationsSubtitle');
+  String get navRealtors => _s('navRealtors');
+  String get navNetwork => _s('navNetwork');
+  String get connect => _s('connect');
+  String get connected => _s('connected');
+  String get pendingRequest => _s('pendingRequest');
+  String get cancelRequest => _s('cancelRequest');
+  String get acceptRequest => _s('acceptRequest');
+  String get declineRequest => _s('declineRequest');
+  String get requests => _s('requests');
+  String get noRequests => _s('noRequests');
+  String get inviteToApp => _s('inviteToApp');
+  String get inviteContact => _s('inviteContact');
+  String get contactsPermission => _s('contactsPermission');
+  String get contactsPermissionDesc => _s('contactsPermissionDesc');
+  String get shareInviteLink => _s('shareInviteLink');
+  String get inviteMsg => _s('inviteMsg');
+  // Login flow — new screens
+  String get continueWithMobile => _s('continueWithMobile');
+  // Persona selection
+  String get personaWelcomeTitle => _s('personaWelcomeTitle');
+  String get personaWelcomeSubtitle => _s('personaWelcomeSubtitle');
+  String get personaWhatsYou => _s('personaWhatsYou');
+  String get personaPersonaliseSearch => _s('personaPersonaliseSearch');
+  String get personaYourRole => _s('personaYourRole');
+  String get personaTailorWorkspace => _s('personaTailorWorkspace');
+  String get personaContinue => _s('personaContinue');
+  String get personaSetupProfile => _s('personaSetupProfile');
+  String get personaBuyerTitle => _s('personaBuyerTitle');
+  String get personaBuyerSubtitle => _s('personaBuyerSubtitle');
+  String get personaSellerTitle => _s('personaSellerTitle');
+  String get personaSellerSubtitle => _s('personaSellerSubtitle');
+  String get subHomeBuyer => _s('subHomeBuyer');
+  String get subHomeBuyerHint => _s('subHomeBuyerHint');
+  String get subInvestorBuyer => _s('subInvestorBuyer');
+  String get subInvestorBuyerHint => _s('subInvestorBuyerHint');
+  String get subPropertyOwner => _s('subPropertyOwner');
+  String get subPropertyOwnerHint => _s('subPropertyOwnerHint');
+  String get subBrokerAgent => _s('subBrokerAgent');
+  String get subBrokerAgentHint => _s('subBrokerAgentHint');
+  String get subBuilder => _s('subBuilder');
+  String get subBuilderHint => _s('subBuilderHint');
+  String get subInvestorSeller => _s('subInvestorSeller');
+  String get subInvestorSellerHint => _s('subInvestorSellerHint');
+  // Buyer onboarding
+  String get buyerStep => _s('buyerStep');
+  String get buyerOnboardingTitle => _s('buyerOnboardingTitle');
+  String get buyerOnboardingSubtitle => _s('buyerOnboardingSubtitle');
+  String get buyerPropType => _s('buyerPropType');
+  String get buyerLookingTo => _s('buyerLookingTo');
+  String get selectAllApply => _s('selectAllApply');
+  String get chipApartment => _s('chipApartment');
+  String get chipVilla => _s('chipVilla');
+  String get chipPlot => _s('chipPlot');
+  String get chipOffice => _s('chipOffice');
+  String get chipShop => _s('chipShop');
+  String get chipWarehouse => _s('chipWarehouse');
+  String get chipFarmhouse => _s('chipFarmhouse');
+  String get chipStudio => _s('chipStudio');
+  String get chipBuy => _s('chipBuy');
+  String get chipRent => _s('chipRent');
+  String get chipLease => _s('chipLease');
+  String get showMeProperties => _s('showMeProperties');
+  // Seller onboarding
+  String get sellerWelcomeTo => _s('sellerWelcomeTo');
+  String get sellerPropertyMarket => _s('sellerPropertyMarket');
+  String get sellerProfileReady => _s('sellerProfileReady');
+  String get sellerFeature1Title => _s('sellerFeature1Title');
+  String get sellerFeature1Sub => _s('sellerFeature1Sub');
+  String get sellerFeature2Title => _s('sellerFeature2Title');
+  String get sellerFeature2Sub => _s('sellerFeature2Sub');
+  String get sellerFeature3Title => _s('sellerFeature3Title');
+  String get sellerFeature3Sub => _s('sellerFeature3Sub');
+  String get startExploring => _s('startExploring');
 }
 
 // ── Delegate ──────────────────────────────────────────────────────────────────

@@ -6,10 +6,14 @@ const _kCityKey = 'feed_city_filter';
 
 class CityPreferenceNotifier extends StateNotifier<String?> {
   CityPreferenceNotifier(this._ref) : super(null) {
-    _init();
+    _initFuture = _init();
   }
 
   final Ref _ref;
+  late final Future<void> _initFuture;
+
+  /// Completes once SharedPreferences has been read on first build.
+  Future<void> get initializationFuture => _initFuture;
 
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();

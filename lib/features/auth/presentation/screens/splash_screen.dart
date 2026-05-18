@@ -6,6 +6,7 @@ import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
+import 'package:cpapp/features/organisation/presentation/providers/org_providers.dart';
 
 /// Splash screen — listens to auth state then routes accordingly.
 /// • Signed in + profile complete   → Feed
@@ -54,10 +55,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       data: (user) {
         if (user == null) {
           context.go(Routes.onboarding);
-        } else if (!user.isProfileComplete) {
-          context.go(Routes.profileSetup);
         } else {
-          context.go(Routes.feed);
+          if (user.orgId != null) {
+            ref.read(currentOrgIdProvider.notifier).state = user.orgId;
+          }
+          if (!user.isProfileComplete) {
+            context.go(Routes.profileSetup);
+          } else {
+            context.go(Routes.feed);
+          }
         }
       },
       loading: () => context.go(Routes.onboarding),
@@ -98,7 +104,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               ),
               const SizedBox(height: 24),
               Text(
-                'CPApp',
+                'DigiProp',
                 style: AppTypography.headlineLarge.copyWith(
                   color: AppColors.white,
                   letterSpacing: 2,

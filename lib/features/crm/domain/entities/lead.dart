@@ -15,7 +15,7 @@ enum LeadStage {
   String get label => switch (this) {
         LeadStage.newLead => 'New',
         LeadStage.contacted => 'Contacted',
-        LeadStage.viewing => 'Viewing',
+        LeadStage.viewing => 'Visited',
         LeadStage.negotiating => 'Negotiating',
         LeadStage.closed => 'Closed',
         LeadStage.lost => 'Lost',
@@ -50,8 +50,7 @@ enum LeadStage {
         LeadStage.lost => AppColors.error,
       };
 
-  bool get isActive =>
-      this != LeadStage.closed && this != LeadStage.lost;
+  bool get isActive => this != LeadStage.closed && this != LeadStage.lost;
 
   /// Returns the next logical stage (null if terminal).
   LeadStage? get nextStage => switch (this) {
@@ -87,6 +86,26 @@ enum LeadPriority {
         _ => LeadPriority.low,
       };
 }
+
+// ── LeadSource ────────────────────────────────────────────────────────────────
+
+enum LeadSource {
+  added, // manually added via CRM Add Lead form
+  contacted; // auto-created when a user taps Contact Lead Owner
+
+  String get label => switch (this) {
+        LeadSource.added => 'Added',
+        LeadSource.contacted => 'Contacted',
+      };
+
+  static LeadSource fromString(String? v) =>
+      v == 'contacted' ? LeadSource.contacted : LeadSource.added;
+}
+
+/// Result of [CrmRepository.createContactLead]: did we create a fresh lead, or
+/// did the same client already contact this listing? The screen uses this to
+/// pick the right confirmation copy without exposing the underlying query.
+enum ContactLeadOutcome { created, alreadyExisted }
 
 // ── LeadNote ──────────────────────────────────────────────────────────────────
 
@@ -130,9 +149,19 @@ class Lead extends Equatable {
     this.linkedListingId,
     this.linkedListingCity,
     this.linkedListingPrice,
+    this.linkedListingImageUrl,
     this.notes = const [],
     this.reminderAt,
     this.reminderNote,
+    this.remarks,
+    this.source = LeadSource.added,
+    this.orgId,
+    this.teamId,
+    this.assignedTo,
+    this.leadScore = 0,
+    this.touchpointCount = 0,
+    this.lastActivityAt,
+    this.visitCount = 0,
   });
 
   final String id;
@@ -145,11 +174,35 @@ class Lead extends Equatable {
   final String? linkedListingId;
   final String? linkedListingCity;
   final String? linkedListingPrice;
+  final String? linkedListingImageUrl;
+
+  /// Org fields — null for solo-broker leads.
+  final String? orgId;
+
+  /// Team this lead is assigned to (null = unassigned).
+  final String? teamId;
+
+  /// OrgMember.id of the assigned member (null = owner only).
+  final String? assignedTo;
   final List<LeadNote> notes;
+
+  /// Lead conversion score 0–100 (higher = more likely to convert).
+  final int leadScore;
+
+  /// Total number of logged touchpoints (calls, messages, notes, etc.).
+  final int touchpointCount;
+
+  /// Timestamp of the most recent activity log entry.
+  final DateTime? lastActivityAt;
+
+  /// Number of times the client has visited the property.
+  final int visitCount;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? reminderAt;
   final String? reminderNote;
+  final String? remarks;
+  final LeadSource source;
 
   bool get isReminderOverdue =>
       reminderAt != null && reminderAt!.isBefore(DateTime.now());
@@ -166,8 +219,7 @@ class Lead extends Equatable {
     return '$clientName$suffix';
   }
 
-  String? get latestNote =>
-      notes.isNotEmpty ? notes.last.text : null;
+  String? get latestNote => notes.isNotEmpty ? notes.last.text : null;
 
   Lead copyWith({
     String? clientName,
@@ -182,6 +234,15 @@ class Lead extends Equatable {
     bool clearReminder = false,
     String? reminderNote,
     bool clearReminderNote = false,
+    String? remarks,
+    bool clearRemarks = false,
+    String? orgId,
+    String? teamId,
+    String? assignedTo,
+    int? leadScore,
+    int? touchpointCount,
+    DateTime? lastActivityAt,
+    int? visitCount,
   }) {
     return Lead(
       id: id,
@@ -190,19 +251,27 @@ class Lead extends Equatable {
       clientPhone: clientPhone ?? this.clientPhone,
       stage: stage ?? this.stage,
       priority: priority ?? this.priority,
-      estimatedValue: clearEstimatedValue
-          ? null
-          : (estimatedValue ?? this.estimatedValue),
+      estimatedValue:
+          clearEstimatedValue ? null : (estimatedValue ?? this.estimatedValue),
       linkedListingId: linkedListingId,
       linkedListingCity: linkedListingCity,
       linkedListingPrice: linkedListingPrice,
+      linkedListingImageUrl: linkedListingImageUrl,
       notes: notes ?? this.notes,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       reminderAt: clearReminder ? null : (reminderAt ?? this.reminderAt),
-      reminderNote: clearReminderNote
-          ? null
-          : (reminderNote ?? this.reminderNote),
+      reminderNote:
+          clearReminderNote ? null : (reminderNote ?? this.reminderNote),
+      remarks: clearRemarks ? null : (remarks ?? this.remarks),
+      source: source,
+      orgId: orgId ?? this.orgId,
+      teamId: teamId ?? this.teamId,
+      assignedTo: assignedTo ?? this.assignedTo,
+      leadScore: leadScore ?? this.leadScore,
+      touchpointCount: touchpointCount ?? this.touchpointCount,
+      lastActivityAt: lastActivityAt ?? this.lastActivityAt,
+      visitCount: visitCount ?? this.visitCount,
     );
   }
 
@@ -215,5 +284,6 @@ class Lead extends Equatable {
         priority,
         updatedAt,
         reminderAt,
+        remarks,
       ];
 }

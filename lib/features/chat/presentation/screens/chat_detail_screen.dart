@@ -15,11 +15,13 @@ class ChatDetailScreen extends ConsumerStatefulWidget {
     required this.chatId,
     required this.otherName,
     this.otherPhoto,
+    this.otherUid,
   });
 
   final String chatId;
   final String otherName;
   final String? otherPhoto;
+  final String? otherUid;
 
   @override
   ConsumerState<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -33,7 +35,6 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Mark read when entering the screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final myUid =
           ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
@@ -69,7 +70,27 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
     _textController.clear();
     setState(() => _isSending = true);
     try {
-      await ref.read(chatSendProvider)(widget.chatId, text);
+      final myUser = ref.read(authStateChangesProvider).valueOrNull;
+      if (myUser == null) return;
+
+      final receiverId = widget.otherUid?.isNotEmpty == true
+          ? widget.otherUid!
+          : widget.chatId
+              .split('_')
+              .firstWhere((p) => p != myUser.uid, orElse: () => '');
+
+      if (receiverId.isEmpty) return;
+
+      await ref.read(chatDataSourceProvider).sendMessage(
+            chatId: widget.chatId,
+            senderId: myUser.uid,
+            senderName: myUser.name,
+            senderPhoto: myUser.photoUrl,
+            receiverId: receiverId,
+            receiverName: widget.otherName,
+            receiverPhoto: widget.otherPhoto,
+            text: text,
+          );
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } finally {
       if (mounted) setState(() => _isSending = false);
@@ -78,23 +99,30 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final myUid =
         ref.watch(authStateChangesProvider).valueOrNull?.uid ?? '';
-    final messagesAsync = ref.watch(chatMessagesProvider(widget.chatId));
+    final state = ref.watch(chatMessagesProvider(widget.chatId));
 
-    // Scroll to bottom when new messages arrive
-    ref.listen(chatMessagesProvider(widget.chatId), (_, next) {
-      if (next.hasValue) {
+    ref.listen<ChatMessagesState>(chatMessagesProvider(widget.chatId),
+        (prev, next) {
+      final prevTailId = prev?.streamMessages.isNotEmpty == true
+          ? prev!.streamMessages.last.id
+          : null;
+      final nextTailId = next.streamMessages.isNotEmpty
+          ? next.streamMessages.last.id
+          : null;
+      if (nextTailId != null && nextTailId != prevTailId) {
         WidgetsBinding.instance
             .addPostFrameCallback((_) => _scrollToBottom());
       }
     });
 
     return Scaffold(
-      backgroundColor: AppColors.offWhite,
+      backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
       appBar: AppBar(
-        backgroundColor: AppColors.navyDark,
-        foregroundColor: AppColors.white,
+        backgroundColor: isDark ? AppColors.navyDark : AppColors.white,
+        foregroundColor: isDark ? AppColors.white : AppColors.navyDark,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -111,7 +139,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
               child: Text(
                 widget.otherName,
                 style: AppTypography.titleSmall.copyWith(
-                  color: AppColors.white,
+                  color: isDark ? AppColors.white : AppColors.navyDark,
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,
@@ -124,52 +152,93 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
       body: Column(
         children: [
           Expanded(
-            child: messagesAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.navyDark),
-              ),
-              error: (e, _) => Center(
-                child: Text(
-                  'Could not load messages',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              data: (messages) {
-                if (messages.isEmpty) {
+            child: Builder(
+              builder: (_) {
+                if (state.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.gold),
+                  );
+                }
+                if (state.error != null && state.messages.isEmpty) {
                   return Center(
                     child: Text(
-                      'Send a message to start chatting',
+                      'Could not load messages',
                       style: AppTypography.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
                   );
                 }
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isMine = msg.senderId == myUid;
-                    final showDateSeparator = index == 0 ||
-                        !_sameDay(
-                          messages[index - 1].timestamp,
-                          msg.timestamp,
-                        );
-                    return Column(
-                      children: [
-                        if (showDateSeparator)
-                          _DateSeparator(date: msg.timestamp),
-                        _MessageBubble(message: msg, isMine: isMine),
-                      ],
-                    );
+                if (state.messages.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Send a message to start chatting',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: isDark
+                            ? AppColors.textOnDarkSecondary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  );
+                }
+                final messages = state.messages;
+                final showFooter = state.isLoadingMore;
+                return NotificationListener<ScrollNotification>(
+                  onNotification: (n) {
+                    if (n.metrics.pixels <= 80 &&
+                        !state.isLoadingMore &&
+                        state.hasMore &&
+                        state.messages.isNotEmpty) {
+                      ref
+                          .read(chatMessagesProvider(widget.chatId).notifier)
+                          .loadOlder();
+                    }
+                    return false;
                   },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    itemCount: messages.length + (showFooter ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (showFooter && index == 0) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.gold,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      final msgIndex = showFooter ? index - 1 : index;
+                      final msg = messages[msgIndex];
+                      final isMine = msg.senderId == myUid;
+                      final showDateSeparator = msgIndex == 0 ||
+                          !_sameDay(
+                            messages[msgIndex - 1].timestamp,
+                            msg.timestamp,
+                          );
+                      return Column(
+                        children: [
+                          if (showDateSeparator)
+                            _DateSeparator(date: msg.timestamp, isDark: isDark),
+                          _MessageBubble(
+                            message: msg,
+                            isMine: isMine,
+                            isDark: isDark,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -177,6 +246,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           _InputBar(
             controller: _textController,
             isSending: _isSending,
+            isDark: isDark,
             onSend: _send,
           ),
         ],
@@ -191,14 +261,22 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
 // ── Message bubble ────────────────────────────────────────────────────────────
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.isMine});
+  const _MessageBubble({
+    required this.message,
+    required this.isMine,
+    required this.isDark,
+  });
 
   final ChatMessage message;
   final bool isMine;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     final timeStr = DateFormat('h:mm a').format(message.timestamp);
+    final receivedBg = isDark ? AppColors.surfaceDark : AppColors.white;
+    final receivedBorder = isDark ? AppColors.borderDark : AppColors.border;
+    final receivedText = isDark ? AppColors.white : AppColors.textPrimary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -218,7 +296,7 @@ class _MessageBubble extends StatelessWidget {
                 vertical: 10,
               ),
               decoration: BoxDecoration(
-                color: isMine ? AppColors.gold : AppColors.white,
+                color: isMine ? AppColors.gold : receivedBg,
                 borderRadius: isMine
                     ? const BorderRadius.only(
                         topLeft: Radius.circular(18),
@@ -232,9 +310,12 @@ class _MessageBubble extends StatelessWidget {
                         bottomLeft: Radius.circular(18),
                         bottomRight: Radius.circular(18),
                       ),
+                border: isMine
+                    ? null
+                    : Border.all(color: receivedBorder, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -243,7 +324,7 @@ class _MessageBubble extends StatelessWidget {
               child: Text(
                 message.text,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: isMine ? AppColors.navyDark : AppColors.textPrimary,
+                  color: isMine ? AppColors.navyDark : receivedText,
                   height: 1.4,
                 ),
               ),
@@ -269,8 +350,9 @@ class _MessageBubble extends StatelessWidget {
 // ── Date separator ────────────────────────────────────────────────────────────
 
 class _DateSeparator extends StatelessWidget {
-  const _DateSeparator({required this.date});
+  const _DateSeparator({required this.date, required this.isDark});
   final DateTime date;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -287,11 +369,13 @@ class _DateSeparator extends StatelessWidget {
       label = DateFormat('MMM d, yyyy').format(date);
     }
 
+    final divColor = isDark ? AppColors.borderDark : AppColors.border;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: AppColors.border)),
+          Expanded(child: Divider(color: divColor)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
@@ -301,7 +385,7 @@ class _DateSeparator extends StatelessWidget {
               ),
             ),
           ),
-          const Expanded(child: Divider(color: AppColors.border)),
+          Expanded(child: Divider(color: divColor)),
         ],
       ),
     );
@@ -314,17 +398,25 @@ class _InputBar extends StatelessWidget {
   const _InputBar({
     required this.controller,
     required this.isSending,
+    required this.isDark,
     required this.onSend,
   });
 
   final TextEditingController controller;
   final bool isSending;
+  final bool isDark;
   final VoidCallback onSend;
 
   @override
   Widget build(BuildContext context) {
+    final barBg = isDark ? AppColors.navyMid : AppColors.white;
+    final fieldBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final fieldBorder = isDark ? AppColors.borderDark : AppColors.border;
+    final textColor = isDark ? AppColors.white : AppColors.textPrimary;
+    final hintColor = isDark ? AppColors.textOnDarkSecondary : AppColors.textHint;
+
     return Container(
-      color: AppColors.white,
+      color: barBg,
       padding: EdgeInsets.only(
         left: 12,
         right: 12,
@@ -338,22 +430,18 @@ class _InputBar extends StatelessWidget {
             child: Container(
               constraints: const BoxConstraints(maxHeight: 120),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: fieldBg,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: fieldBorder),
               ),
               child: TextField(
                 controller: controller,
                 maxLines: null,
                 textCapitalization: TextCapitalization.sentences,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
+                style: AppTypography.bodyMedium.copyWith(color: textColor),
                 decoration: InputDecoration(
                   hintText: 'Type a message…',
-                  hintStyle: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textHint,
-                  ),
+                  hintStyle: AppTypography.bodyMedium.copyWith(color: hintColor),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,

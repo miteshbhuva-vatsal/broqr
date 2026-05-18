@@ -3,24 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/theme/app_colors.dart';
+import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
 import 'package:cpapp/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:cpapp/features/notifications/presentation/widgets/notification_tile.dart';
-
-const _navy = Color(0xFF0A1628);
-const _gold = Color(0xFFD4A843);
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     ref.listen<NotificationState>(notificationsProvider, (_, next) {
       if (next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.error!),
-            backgroundColor: Colors.red[700],
+            backgroundColor: AppColors.error,
           ),
         );
         ref.read(notificationsProvider.notifier).clearError();
@@ -30,31 +31,34 @@ class NotificationsScreen extends ConsumerWidget {
     final state = ref.watch(notificationsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: isDark ? AppColors.navyDark : AppColors.white,
+        foregroundColor: isDark ? AppColors.white : AppColors.navyDark,
+        elevation: 0,
         title: Row(
           children: [
             Text(
               AppLocalizations.of(context).notificationsTitle,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: AppTypography.titleMedium.copyWith(
+                color: isDark ? AppColors.white : AppColors.navyDark,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             if (state.unreadCount > 0) ...[
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _gold,
+                  color: AppColors.gold,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${state.unreadCount}',
-                  style: const TextStyle(
-                    color: _navy,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.navyDark,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
                   ),
                 ),
               ),
@@ -68,11 +72,12 @@ class NotificationsScreen extends ConsumerWidget {
                   ref.read(notificationsProvider.notifier).markAllRead(),
               child: Text(
                 AppLocalizations.of(context).markAllRead,
-                style: const TextStyle(color: _gold, fontSize: 13),
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.gold,
+                ),
               ),
             ),
         ],
-        elevation: 0,
       ),
       body: _NotificationsBody(state: state),
     );
@@ -85,8 +90,10 @@ class _NotificationsBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator(color: _navy));
+      return const Center(child: CircularProgressIndicator(color: AppColors.gold));
     }
 
     if (state.notifications.isEmpty) {
@@ -95,16 +102,24 @@ class _NotificationsBody extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.notifications_none_outlined, size: 64, color: Colors.grey),
+            Icon(
+              Icons.notifications_none_outlined,
+              size: 64,
+              color: isDark ? AppColors.textOnDarkSecondary : AppColors.textHint,
+            ),
             const SizedBox(height: 12),
             Text(
               l.noNotificationsYet,
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
+              style: AppTypography.titleSmall.copyWith(
+                color: isDark ? AppColors.white : AppColors.navyDark,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               l.notificationsSubtitle,
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: AppTypography.bodySmall.copyWith(
+                color: isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -113,12 +128,14 @@ class _NotificationsBody extends ConsumerWidget {
     }
 
     return RefreshIndicator(
-      color: _navy,
+      color: AppColors.gold,
       onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
       child: ListView.separated(
         itemCount: state.notifications.length,
-        separatorBuilder: (_, __) =>
-            Divider(height: 1, color: Colors.grey[200]),
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: isDark ? AppColors.borderDark : AppColors.border,
+        ),
         itemBuilder: (context, index) {
           final notif = state.notifications[index];
           return NotificationTile(
@@ -145,7 +162,7 @@ class _NotificationsBody extends ConsumerWidget {
     switch (notif.type) {
       case NotificationType.connectionRequest:
       case NotificationType.connectionAccepted:
-        context.go(Routes.network);
+        context.go(Routes.realtors);
 
       case NotificationType.listingInquiry:
       case NotificationType.newListing:
@@ -154,6 +171,9 @@ class _NotificationsBody extends ConsumerWidget {
         } else {
           context.go(Routes.feed);
         }
+
+      case NotificationType.newLead:
+        context.go(Routes.crm);
 
       case NotificationType.reminderDue:
         context.go(Routes.crm);

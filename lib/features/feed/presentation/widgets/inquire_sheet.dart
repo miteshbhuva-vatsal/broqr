@@ -5,6 +5,7 @@ import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/presentation/widgets/add_lead_sheet.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
+import 'package:cpapp/shared/widgets/whatsapp_logo.dart';
 
 /// Bottom sheet shown when a user taps "Inquire" on a feed card.
 class InquireSheet extends StatelessWidget {
@@ -67,7 +68,26 @@ class InquireSheet extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+
+          // Title row
+          Row(
+            children: [
+              Text(
+                AppLocalizations.of(context).contactBroker,
+                style: AppTypography.titleSmall.copyWith(
+                  color: isDark ? AppColors.white : AppColors.navyDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close),
+                color: AppColors.textSecondary,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
 
           // Listing summary
           Container(
@@ -144,7 +164,7 @@ class InquireSheet extends StatelessWidget {
 
           // WhatsApp button
           _SheetButton(
-            icon: Icons.chat_rounded,
+            iconWidget: const WhatsAppLogo(size: 20),
             iconColor: const Color(0xFF25D366),
             label: hasPhone
                 ? AppLocalizations.of(context).messageOnWhatsApp
@@ -157,7 +177,7 @@ class InquireSheet extends StatelessWidget {
 
           // Save as lead → opens AddLeadSheet pre-filled from this listing
           _SheetButton(
-            icon: Icons.bookmark_add_outlined,
+            iconWidget: const Icon(Icons.bookmark_add_outlined, color: AppColors.gold, size: 20),
             iconColor: AppColors.gold,
             label: AppLocalizations.of(context).addLead,
             sublabel: AppLocalizations.of(context).addToCrmPipeline,
@@ -180,7 +200,7 @@ class InquireSheet extends StatelessWidget {
 
 class _SheetButton extends StatelessWidget {
   const _SheetButton({
-    required this.icon,
+    required this.iconWidget,
     required this.iconColor,
     required this.label,
     required this.sublabel,
@@ -188,7 +208,7 @@ class _SheetButton extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final Widget iconWidget;
   final Color iconColor;
   final String label;
   final String sublabel;
@@ -222,7 +242,7 @@ class _SheetButton extends StatelessWidget {
                   color: iconColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
+                child: Center(child: iconWidget),
               ),
               const SizedBox(width: 14),
               Expanded(

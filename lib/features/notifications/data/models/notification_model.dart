@@ -16,7 +16,7 @@ class NotificationModel extends AppNotification {
   factory NotificationModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final d = doc.data()!;
+    final d = doc.data() ?? {};
     return NotificationModel(
       id: doc.id,
       type: NotificationType.fromString(d['type'] as String?),

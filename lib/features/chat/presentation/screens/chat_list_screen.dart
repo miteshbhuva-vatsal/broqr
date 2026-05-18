@@ -14,20 +14,20 @@ class ChatListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final myUid =
-        ref.watch(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final myUid = ref.watch(authStateChangesProvider).valueOrNull?.uid ?? '';
     final convsAsync = ref.watch(chatConversationsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.offWhite,
+      backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
       appBar: AppBar(
-        backgroundColor: AppColors.navyDark,
-        foregroundColor: AppColors.white,
+        backgroundColor: isDark ? AppColors.navyDark : AppColors.white,
+        foregroundColor: isDark ? AppColors.white : AppColors.navyDark,
         elevation: 0,
         title: Text(
           'Messages',
           style: AppTypography.titleMedium.copyWith(
-            color: AppColors.white,
+            color: isDark ? AppColors.white : AppColors.navyDark,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -47,22 +47,22 @@ class ChatListScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: convs.length,
-            separatorBuilder: (_, __) => const Divider(
+            separatorBuilder: (_, __) => Divider(
               height: 1,
               indent: 80,
               endIndent: 16,
-              color: AppColors.border,
+              color: isDark ? AppColors.borderDark : AppColors.border,
             ),
             itemBuilder: (context, index) {
               final conv = convs[index];
               return _ConversationTile(
                 conv: conv,
                 myUid: myUid,
+                isDark: isDark,
                 onTap: () {
                   final otherUid = conv.otherUid(myUid);
                   final otherName = conv.nameFor(otherUid);
                   final otherPhoto = conv.photoFor(otherUid);
-                  // Mark as read
                   if (myUid.isNotEmpty) {
                     ref
                         .read(chatDataSourceProvider)
@@ -92,11 +92,13 @@ class _ConversationTile extends StatelessWidget {
   const _ConversationTile({
     required this.conv,
     required this.myUid,
+    required this.isDark,
     required this.onTap,
   });
 
   final ChatConversation conv;
   final String myUid;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
@@ -106,6 +108,10 @@ class _ConversationTile extends StatelessWidget {
     final photo = conv.photoFor(otherUid);
     final unread = conv.unreadFor(myUid);
     final hasUnread = unread > 0;
+    final nameColor = isDark ? AppColors.white : AppColors.navyDark;
+    final previewColor = hasUnread
+        ? (isDark ? AppColors.white : AppColors.textPrimary)
+        : (isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary);
 
     return InkWell(
       onTap: onTap,
@@ -125,10 +131,8 @@ class _ConversationTile extends StatelessWidget {
                         child: Text(
                           name,
                           style: AppTypography.titleSmall.copyWith(
-                            fontWeight: hasUnread
-                                ? FontWeight.w700
-                                : FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+                            color: nameColor,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -139,12 +143,8 @@ class _ConversationTile extends StatelessWidget {
                         Text(
                           _formatTime(conv.lastMessageAt!),
                           style: AppTypography.labelSmall.copyWith(
-                            color: hasUnread
-                                ? AppColors.gold
-                                : AppColors.textHint,
-                            fontWeight: hasUnread
-                                ? FontWeight.w700
-                                : FontWeight.w400,
+                            color: hasUnread ? AppColors.gold : AppColors.textHint,
+                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
                           ),
                         ),
                       ],
@@ -157,12 +157,8 @@ class _ConversationTile extends StatelessWidget {
                         child: Text(
                           conv.lastMessage ?? 'No messages yet',
                           style: AppTypography.bodySmall.copyWith(
-                            color: hasUnread
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
-                            fontWeight: hasUnread
-                                ? FontWeight.w500
-                                : FontWeight.w400,
+                            color: previewColor,
+                            fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -241,9 +237,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial =
-        name.isNotEmpty ? name[0].toUpperCase() : '?';
-
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     if (photoUrl != null && photoUrl!.isNotEmpty) {
       return CircleAvatar(
         radius: size / 2,
@@ -273,6 +267,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -288,7 +283,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               'No conversations yet',
               style: AppTypography.titleMedium.copyWith(
-                color: AppColors.textPrimary,
+                color: isDark ? AppColors.white : AppColors.navyDark,
               ),
               textAlign: TextAlign.center,
             ),
@@ -296,7 +291,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Connect with brokers to start chatting',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+                color: isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -316,7 +311,7 @@ class _ShimmerList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: 3,
+      itemCount: 5,
       itemBuilder: (_, __) => const _ShimmerTile(),
     );
   }
@@ -352,14 +347,13 @@ class _ShimmerTileState extends State<_ShimmerTile>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
-        final color = Color.lerp(
-          AppColors.shimmerBase,
-          AppColors.shimmerHighlight,
-          _anim.value,
-        )!;
+        final base = isDark ? AppColors.surfaceDark : AppColors.shimmerBase;
+        final hi = isDark ? AppColors.navyLight : AppColors.shimmerHighlight;
+        final color = Color.lerp(base, hi, _anim.value)!;
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(

@@ -41,6 +41,7 @@ ListingRepository listingRepository(Ref ref) {
 class AddListingFormState {
   const AddListingFormState({
     this.step = 0,
+    this.editingListingId,
     this.category,
     this.propertyType,
     this.title = '',
@@ -51,10 +52,15 @@ class AddListingFormState {
     this.price = '',
     this.originalPrice = '',
     this.brokerage = '',
+    this.instagramUrl = '',
     this.description = '',
     this.visibility = ListingVisibility.all,
+    this.pdfFile,
+    this.existingPdfUrl,
     this.heroImage,
+    this.existingHeroImageUrl,
     this.additionalImages = const [],
+    this.existingAdditionalImageUrls = const [],
     this.isSubmitting = false,
     this.uploadProgress,
     this.errorMessage,
@@ -62,6 +68,7 @@ class AddListingFormState {
   });
 
   final int step;
+  final String? editingListingId;
   final ListingCategory? category;
   final PropertyType? propertyType;
   final String title;
@@ -72,14 +79,21 @@ class AddListingFormState {
   final String price;
   final String originalPrice;
   final String brokerage;
+  final String instagramUrl;
   final String description;
   final ListingVisibility visibility;
+  final File? pdfFile;
+  final String? existingPdfUrl;
   final File? heroImage;
+  final String? existingHeroImageUrl;
   final List<File> additionalImages;
+  final List<String> existingAdditionalImageUrls;
   final bool isSubmitting;
   final double? uploadProgress;
   final String? errorMessage;
   final Listing? publishedListing;
+
+  bool get isEditMode => editingListingId != null;
 
   bool get isStep1Valid => category != null;
   bool get isStep2Valid =>
@@ -87,10 +101,12 @@ class AddListingFormState {
       location.trim().isNotEmpty &&
       area.trim().isNotEmpty &&
       price.trim().isNotEmpty;
-  bool get isStep3Valid => heroImage != null;
+  bool get isStep3Valid =>
+      heroImage != null || existingHeroImageUrl != null;
 
   AddListingFormState copyWith({
     int? step,
+    String? editingListingId,
     ListingCategory? category,
     PropertyType? propertyType,
     bool clearPropertyType = false,
@@ -102,10 +118,17 @@ class AddListingFormState {
     String? price,
     String? originalPrice,
     String? brokerage,
+    String? instagramUrl,
     String? description,
     ListingVisibility? visibility,
+    File? pdfFile,
+    bool clearPdfFile = false,
+    String? existingPdfUrl,
+    bool clearExistingPdfUrl = false,
     File? heroImage,
+    String? existingHeroImageUrl,
     List<File>? additionalImages,
+    List<String>? existingAdditionalImageUrls,
     bool? isSubmitting,
     double? uploadProgress,
     String? errorMessage,
@@ -116,6 +139,7 @@ class AddListingFormState {
   }) {
     return AddListingFormState(
       step: step ?? this.step,
+      editingListingId: editingListingId ?? this.editingListingId,
       category: category ?? this.category,
       propertyType: clearPropertyType ? null : (propertyType ?? this.propertyType),
       title: title ?? this.title,
@@ -126,10 +150,16 @@ class AddListingFormState {
       price: price ?? this.price,
       originalPrice: originalPrice ?? this.originalPrice,
       brokerage: brokerage ?? this.brokerage,
+      instagramUrl: instagramUrl ?? this.instagramUrl,
       description: description ?? this.description,
       visibility: visibility ?? this.visibility,
+      pdfFile: clearPdfFile ? null : (pdfFile ?? this.pdfFile),
+      existingPdfUrl: clearExistingPdfUrl ? null : (existingPdfUrl ?? this.existingPdfUrl),
       heroImage: heroImage ?? this.heroImage,
+      existingHeroImageUrl: existingHeroImageUrl ?? this.existingHeroImageUrl,
       additionalImages: additionalImages ?? this.additionalImages,
+      existingAdditionalImageUrls:
+          existingAdditionalImageUrls ?? this.existingAdditionalImageUrls,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       uploadProgress: clearProgress ? null : (uploadProgress ?? this.uploadProgress),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -174,7 +204,45 @@ class AddListing extends _$AddListing {
   void updatePrice(String v) => state = state.copyWith(price: v);
   void updateOriginalPrice(String v) => state = state.copyWith(originalPrice: v);
   void updateBrokerage(String v) => state = state.copyWith(brokerage: v);
+  void updateInstagramUrl(String v) => state = state.copyWith(instagramUrl: v);
   void updateDescription(String v) => state = state.copyWith(description: v);
+  void setPdfFile(File f) => state = state.copyWith(pdfFile: f);
+  void clearPdfFile() => state = state.copyWith(clearPdfFile: true, clearExistingPdfUrl: true);
+
+  // ── Edit mode ──────────────────────────────────────────────────────────────
+
+  void loadForEdit(Listing listing) {
+    state = AddListingFormState(
+      editingListingId: listing.id,
+      step: 0,
+      category: listing.category,
+      propertyType: listing.propertyType,
+      title: listing.title ?? '',
+      city: listing.city,
+      location: listing.location,
+      area: listing.area > 0 ? listing.area.toStringAsFixed(0) : '',
+      areaUnit: listing.areaUnit,
+      price: listing.price > 0 ? listing.price.toStringAsFixed(0) : '',
+      originalPrice: listing.originalPrice != null
+          ? listing.originalPrice!.toStringAsFixed(0)
+          : '',
+      brokerage: listing.brokerageAmount ?? '',
+      instagramUrl: listing.instagramUrl ?? '',
+      description: listing.description ?? '',
+      visibility: listing.visibility,
+      existingHeroImageUrl: listing.heroImageUrl,
+      existingAdditionalImageUrls: listing.additionalImageUrls,
+      existingPdfUrl: listing.pdfUrl,
+    );
+  }
+
+  void removeExistingAdditionalImage(String url) {
+    state = state.copyWith(
+      existingAdditionalImageUrls: state.existingAdditionalImageUrls
+          .where((u) => u != url)
+          .toList(),
+    );
+  }
   void updateVisibility(ListingVisibility v) => state = state.copyWith(visibility: v);
 
   // ── Step 3 ─────────────────────────────────────────────────────────────
@@ -195,9 +263,17 @@ class AddListing extends _$AddListing {
     state = state.copyWith(additionalImages: updated);
   }
 
-  // ── Publish ────────────────────────────────────────────────────────────
+  // ── Publish / Update ──────────────────────────────────────────────────────
 
   Future<void> publish({List<int>? posterPngBytes}) async {
+    if (state.isEditMode) {
+      await _updateExisting();
+    } else {
+      await _createNew(posterPngBytes: posterPngBytes);
+    }
+  }
+
+  Future<void> _createNew({List<int>? posterPngBytes}) async {
     final user = ref.read(authStateChangesProvider).valueOrNull;
     if (user == null || state.heroImage == null || state.category == null) {
       state = state.copyWith(errorMessage: 'Missing required fields.');
@@ -205,7 +281,6 @@ class AddListing extends _$AddListing {
     }
 
     state = state.copyWith(isSubmitting: true, uploadProgress: 0.0, clearError: true);
-
     final role = ref.read(authStateChangesProvider).valueOrNull?.role;
 
     final result = await ref.read(listingRepositoryProvider).createListing(
@@ -232,6 +307,10 @@ class AddListing extends _$AddListing {
           brokerageAmount: state.brokerage.trim().isEmpty
               ? null
               : state.brokerage.trim(),
+          instagramUrl: state.instagramUrl.trim().isEmpty
+              ? null
+              : state.instagramUrl.trim(),
+          pdfFile: state.pdfFile,
           posterRole: role?.name,
           visibility: state.visibility,
           onProgress: (p) => state = state.copyWith(uploadProgress: p),
@@ -243,7 +322,6 @@ class AddListing extends _$AddListing {
             isSubmitting: false, clearProgress: true, errorMessage: failure.message,);
       },
       (listing) async {
-        // Upload poster if bytes provided
         if (posterPngBytes != null && posterPngBytes.isNotEmpty) {
           await ref.read(listingRepositoryProvider).uploadPoster(
                 listingId: listing.id,
@@ -252,9 +330,73 @@ class AddListing extends _$AddListing {
         }
         state = state.copyWith(
             isSubmitting: false, clearProgress: true, publishedListing: listing,);
-
-        // Fan-out: notify everyone who follows this broker
         unawaited(_notifyFollowers(user, listing));
+      },
+    );
+  }
+
+  Future<void> _updateExisting() async {
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    if (user == null || state.editingListingId == null || state.category == null) {
+      state = state.copyWith(errorMessage: 'Missing required fields.');
+      return;
+    }
+
+    state = state.copyWith(isSubmitting: true, uploadProgress: 0.0, clearError: true);
+
+    final result = await ref.read(listingRepositoryProvider).updateListingFull(
+          listingId: state.editingListingId!,
+          category: state.category!,
+          city: state.city.trim(),
+          location: state.location.trim(),
+          area: double.tryParse(state.area) ?? 0,
+          areaUnit: state.areaUnit,
+          price: double.tryParse(state.price.replaceAll(',', '')) ?? 0,
+          originalPrice: state.originalPrice.trim().isEmpty
+              ? null
+              : double.tryParse(state.originalPrice.replaceAll(',', '')),
+          title: state.title.trim().isEmpty ? null : state.title.trim(),
+          propertyType: state.propertyType,
+          brokerageAmount: state.brokerage.trim().isEmpty
+              ? null
+              : state.brokerage.trim(),
+          instagramUrl: state.instagramUrl.trim().isEmpty
+              ? null
+              : state.instagramUrl.trim(),
+          description: state.description.trim().isEmpty
+              ? null
+              : state.description.trim(),
+          visibility: state.visibility,
+          newHeroImageFile: state.heroImage,
+          newAdditionalImageFiles: state.additionalImages,
+          keptAdditionalImageUrls: state.existingAdditionalImageUrls,
+          newPdfFile: state.pdfFile,
+          existingPdfUrl: state.existingPdfUrl,
+          onProgress: (p) => state = state.copyWith(uploadProgress: p),
+        );
+
+    result.fold(
+      (failure) {
+        state = state.copyWith(
+            isSubmitting: false, clearProgress: true, errorMessage: failure.message,);
+      },
+      (_) {
+        // Synthesise a stub Listing to signal success — detail will reload from Firestore.
+        final stub = Listing(
+          id: state.editingListingId!,
+          brokerUid: user.uid,
+          brokerName: user.name,
+          category: state.category!,
+          city: state.city.trim(),
+          location: state.location.trim(),
+          area: double.tryParse(state.area) ?? 0,
+          price: double.tryParse(state.price.replaceAll(',', '')) ?? 0,
+          heroImageUrl: state.existingHeroImageUrl ?? '',
+          status: ListingStatus.active,
+          createdAt: DateTime.now(),
+        );
+        state = state.copyWith(
+            isSubmitting: false, clearProgress: true, publishedListing: stub,);
       },
     );
   }
@@ -299,18 +441,180 @@ final listingByIdProvider =
 
 // ── Broker listings (any uid, for profile views) ──────────────────────────────
 
-final brokerListingsProvider =
-    FutureProvider.family<List<Listing>, String>((ref, brokerUid) async {
+class BrokerListingsState {
+  const BrokerListingsState({
+    this.listings = const [],
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.error,
+  });
+  final List<Listing> listings;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final String? error;
+
+  BrokerListingsState copyWith({
+    List<Listing>? listings,
+    bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
+    String? error,
+    bool clearError = false,
+  }) {
+    return BrokerListingsState(
+      listings: listings ?? this.listings,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      error: clearError ? null : (error ?? this.error),
+    );
+  }
+}
+
+/// Paginated listings for a single broker (profile screens, my-listings, etc.).
+/// Declared manually — no build_runner required.
+final brokerListingsProvider = NotifierProvider.autoDispose
+    .family<BrokerListings, BrokerListingsState, String>(BrokerListings.new);
+
+class BrokerListings
+    extends AutoDisposeFamilyNotifier<BrokerListingsState, String> {
+  static const _pageSize = 20;
+
+  @override
+  BrokerListingsState build(String brokerUid) {
+    if (brokerUid.isNotEmpty) Future.microtask(_load);
+    return const BrokerListingsState(isLoading: true);
+  }
+
+  Future<void> _load() async {
+    final brokerUid = arg;
+    final myUid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final result = await ref
+        .read(listingRepositoryProvider)
+        .fetchBrokerListings(brokerUid, limit: _pageSize);
+    result.fold(
+      (f) => state = state.copyWith(isLoading: false, error: f.message),
+      (list) {
+        final filtered = myUid == brokerUid
+            ? list
+            : list.where((l) => l.visibility != ListingVisibility.onlyMe).toList();
+        state = state.copyWith(
+          isLoading: false,
+          listings: filtered,
+          hasMore: list.length >= _pageSize,
+          clearError: true,
+        );
+      },
+    );
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore || state.listings.isEmpty) return;
+    state = state.copyWith(isLoadingMore: true);
+    final brokerUid = arg;
+    final last = state.listings.last;
+    final myUid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final result = await ref.read(listingRepositoryProvider).fetchBrokerListings(
+          brokerUid,
+          lastCreatedAt: last.createdAt,
+          lastDocId: last.id,
+          limit: _pageSize,
+        );
+    result.fold(
+      (f) => state = state.copyWith(isLoadingMore: false, error: f.message),
+      (more) {
+        final filtered = myUid == brokerUid
+            ? more
+            : more.where((l) => l.visibility != ListingVisibility.onlyMe).toList();
+        state = state.copyWith(
+          isLoadingMore: false,
+          listings: [...state.listings, ...filtered],
+          hasMore: more.length >= _pageSize,
+          clearError: true,
+        );
+      },
+    );
+  }
+
+  Future<void> refresh() async {
+    state = const BrokerListingsState(isLoading: true);
+    await _load();
+  }
+}
+
+// ── Org info (name + admin UID) from organisations collection ─────────────────
+
+final orgInfoProvider = FutureProvider.family<
+    ({String orgName, String adminUid})?, String>((ref, orgId) async {
+  if (orgId.isEmpty) return null;
+  final db = ref.read(firebaseFirestoreProvider);
+  final doc = await db
+      .collection(AppConstants.organisationsCollection)
+      .doc(orgId)
+      .get();
+  final data = doc.data();
+  if (data == null) return null;
+  return (
+    orgName: (data['orgName'] as String?) ?? '',
+    adminUid: (data['adminUid'] as String?) ?? '',
+  );
+});
+
+// ── Org-combined listings: member's own + admin's listings merged ─────────────
+
+Future<List<Listing>> _fetchFirst20(Ref ref, String brokerUid) async {
   if (brokerUid.isEmpty) return [];
   final myUid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
-  final result =
-      await ref.read(listingRepositoryProvider).fetchBrokerListings(brokerUid);
+  final result = await ref
+      .read(listingRepositoryProvider)
+      .fetchBrokerListings(brokerUid, limit: 20);
   return result.fold((_) => [], (list) {
-    if (myUid == brokerUid) return list; // own profile — show all
-    return list
-        .where((l) => l.visibility != ListingVisibility.onlyMe)
-        .toList();
+    if (myUid == brokerUid) return list;
+    return list.where((l) => l.visibility != ListingVisibility.onlyMe).toList();
   });
+}
+
+final orgCombinedListingsProvider = FutureProvider.family<List<Listing>,
+    ({String uid, String? orgId})>((ref, args) async {
+  final myListings = await _fetchFirst20(ref, args.uid);
+  if (args.orgId == null) return myListings;
+  final orgInfo = await ref.read(orgInfoProvider(args.orgId!).future);
+  if (orgInfo == null ||
+      orgInfo.adminUid.isEmpty ||
+      orgInfo.adminUid == args.uid) {
+    return myListings;
+  }
+  final adminListings = await _fetchFirst20(ref, orgInfo.adminUid);
+  final seen = <String>{};
+  return [...myListings, ...adminListings]
+      .where((l) => seen.add(l.id))
+      .toList();
+});
+
+// ── Inquired listings (buyer profile) ────────────────────────────────────────
+
+final inquiredListingsProvider =
+    FutureProvider<List<Listing>>((ref) async {
+  final uid = ref.watch(authStateChangesProvider).valueOrNull?.uid ?? '';
+  if (uid.isEmpty) return [];
+  final idsResult =
+      await ref.read(listingRepositoryProvider).fetchInquiredListingIds(uid);
+  final ids = idsResult.fold((_) => <String>[], (list) => list);
+  if (ids.isEmpty) return [];
+  final db = ref.read(firebaseFirestoreProvider);
+  // Fetch in batches of 10 (Firestore whereIn limit).
+  final listings = <Listing>[];
+  for (var i = 0; i < ids.length; i += 10) {
+    final batch = ids.sublist(i, i + 10 > ids.length ? ids.length : i + 10);
+    final snap = await db
+        .collection(AppConstants.listingsCollection)
+        .where(FieldPath.documentId, whereIn: batch)
+        .get();
+    listings.addAll(snap.docs.map(ListingModel.fromFirestore));
+  }
+  return listings;
 });
 
 // ── My Listings ───────────────────────────────────────────────────────────────
@@ -319,21 +623,31 @@ class MyListingsState {
   const MyListingsState({
     this.listings = const [],
     this.isLoading = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
     this.error,
   });
   final List<Listing> listings;
   final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
   final String? error;
+
+  static const _pageSize = 20;
 
   MyListingsState copyWith({
     List<Listing>? listings,
     bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
     String? error,
     bool clearError = false,
   }) {
     return MyListingsState(
       listings: listings ?? this.listings,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -341,6 +655,8 @@ class MyListingsState {
 
 @riverpod
 class MyListings extends _$MyListings {
+  static const _pageSize = MyListingsState._pageSize;
+
   @override
   MyListingsState build() {
     Future.microtask(() => _load());
@@ -348,24 +664,49 @@ class MyListings extends _$MyListings {
   }
 
   Future<void> _load() async {
-    final uid =
-        ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final uid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
     if (uid.isEmpty) {
       state = state.copyWith(isLoading: false);
       return;
     }
-    final result =
-        await ref.read(listingRepositoryProvider).fetchBrokerListings(uid);
+    final result = await ref
+        .read(listingRepositoryProvider)
+        .fetchBrokerListings(uid, limit: _pageSize);
     result.fold(
-      (failure) =>
-          state = state.copyWith(isLoading: false, error: failure.message),
-      (listings) =>
-          state = state.copyWith(isLoading: false, listings: listings),
+      (f) => state = state.copyWith(isLoading: false, error: f.message),
+      (list) => state = state.copyWith(
+        isLoading: false,
+        listings: list,
+        hasMore: list.length >= _pageSize,
+        clearError: true,
+      ),
+    );
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore || state.listings.isEmpty) return;
+    state = state.copyWith(isLoadingMore: true);
+    final uid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final last = state.listings.last;
+    final result = await ref.read(listingRepositoryProvider).fetchBrokerListings(
+          uid,
+          lastCreatedAt: last.createdAt,
+          lastDocId: last.id,
+          limit: _pageSize,
+        );
+    result.fold(
+      (f) => state = state.copyWith(isLoadingMore: false, error: f.message),
+      (more) => state = state.copyWith(
+        isLoadingMore: false,
+        listings: [...state.listings, ...more],
+        hasMore: more.length >= _pageSize,
+        clearError: true,
+      ),
     );
   }
 
   Future<void> refresh() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = const MyListingsState(isLoading: true);
     await _load();
   }
 }

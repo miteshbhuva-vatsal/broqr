@@ -18,10 +18,23 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Contacts (for invite-to-app sheet in broker network) -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Push notifications: required on Android 13+ (API 33+) -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        android:minSdkVersion="33" />
+
+    <!-- Vibration for notifications -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
-        android:label="CPApp"
+        android:label="DigiProp"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="false"
+        android:requestLegacyExternalStorage="false">
 
         <activity
             android:name=".MainActivity"
@@ -39,12 +52,26 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- cpapp:// deep links for listings and broker profiles -->
+            <!-- cpapp:// deep links for listings and broker profiles (legacy) -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cpapp" />
+            </intent-filter>
+            <!-- App Links: https://www.digiprop.in/listing/{id} and /broker/{id} -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="www.digiprop.in"
+                    android:pathPrefix="/listing" />
+                <data
+                    android:scheme="https"
+                    android:host="www.digiprop.in"
+                    android:pathPrefix="/broker" />
             </intent-filter>
         </activity>
 
@@ -56,8 +83,17 @@
             android:name="com.facebook.sdk.ClientToken"
             android:value="a2acd0ae5cea0644f9203c014dceb70a"/>
 
+        <!-- FCM: default notification icon and channel for system-tray notifications -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="cpapp_high" />
+
         <activity
             android:name="com.facebook.FacebookActivity"
+            android:exported="false"
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
             android:label="@string/app_name" />
         <activity

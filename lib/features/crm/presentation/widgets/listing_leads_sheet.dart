@@ -93,7 +93,8 @@ class ListingLeadsSheet extends ConsumerWidget {
                     textStyle: AppTypography.labelMedium.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     backgroundColor: AppColors.gold.withValues(alpha: 0.1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -128,7 +129,9 @@ class ListingLeadsSheet extends ConsumerWidget {
                         Text(
                           AppLocalizations.of(context).noLeads,
                           style: AppTypography.titleSmall.copyWith(
-                            color: isDark ? AppColors.white : AppColors.textPrimary,
+                            color: isDark
+                                ? AppColors.white
+                                : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -231,9 +234,33 @@ class _LeadRow extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: (lead.source == LeadSource.contacted
+                        ? AppColors.info
+                        : AppColors.success)
+                    .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                lead.source.label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: lead.source == LeadSource.contacted
+                      ? AppColors.info
+                      : AppColors.success,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9,
+                ),
+              ),
+            ),
             const SizedBox(width: 6),
-            const Icon(Icons.chevron_right_rounded,
-                size: 16, color: AppColors.textHint,),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: AppColors.textHint,
+            ),
           ],
         ),
       ),

@@ -101,8 +101,9 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         createdAt: DateTime.now(),
       );
       await _items(recipientUid).add(model.toMap());
-    } catch (e) {
-      throw ServerException('Failed to create notification: $e');
+    } catch (_) {
+      // Notification delivery is fire-and-forget; swallow errors so callers
+      // using unawaited() don't surface unhandled exceptions.
     }
   }
 }

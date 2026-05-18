@@ -43,11 +43,10 @@ class PipelineStatsBar extends StatelessWidget {
           final l = AppLocalizations.of(context);
           return Row(
             children: [
-              _Stat(
-                label: l.pipeline,
+              _PipelineStat(
                 value: _formatValue(crmState.pipelineValue),
-                valueColor: AppColors.gold,
-                isDark: isDark,
+                leadCount: crmState.pipelineLeadCount,
+                label: l.pipeline,
               ),
               _Divider(),
               _Stat(
@@ -112,6 +111,54 @@ class _Stat extends StatelessWidget {
               fontSize: 10,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PipelineStat extends StatelessWidget {
+  const _PipelineStat({
+    required this.value,
+    required this.leadCount,
+    required this.label,
+  });
+
+  final String value;
+  final int leadCount;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: AppTypography.titleSmall.copyWith(
+              color: AppColors.gold,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: AppColors.textOnDarkSecondary,
+              fontSize: 10,
+            ),
+          ),
+          if (leadCount > 0) ...[
+            const SizedBox(height: 1),
+            Text(
+              '$leadCount lead${leadCount == 1 ? '' : 's'}',
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.gold.withValues(alpha: 0.6),
+                fontSize: 9,
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -147,21 +147,33 @@ class _CitySelectionSheetState extends ConsumerState<CitySelectionSheet> {
               // Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      AppLocalizations.of(context).yourCity,
-                      style: AppTypography.headlineSmall.copyWith(
-                        color: isDark ? AppColors.white : AppColors.navyDark,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context).yourCity,
+                            style: AppTypography.headlineSmall.copyWith(
+                              color: isDark ? AppColors.white : AppColors.navyDark,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Set your city to see relevant deals in your area.',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Set your city to see relevant deals in your area.',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      color: AppColors.textSecondary,
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),

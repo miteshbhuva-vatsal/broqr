@@ -10,6 +10,7 @@ import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
+import 'package:cpapp/features/auth/presentation/widgets/mobile_login_sheet.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
@@ -120,6 +121,34 @@ class LoginScreen extends ConsumerWidget {
 
                   _SocialDivider(label: l.signInWith),
                   const SizedBox(height: 20),
+
+                  _SocialAuthButton(
+                    label: l.continueWithMobile,
+                    icon: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: const BoxDecoration(
+                        color: AppColors.gold,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.phone_outlined,
+                        color: AppColors.navyDark,
+                        size: 14,
+                      ),
+                    ),
+                    isLoading: isLoading,
+                    onPressed: isLoading
+                        ? null
+                        : () => showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => const MobileLoginSheet(),
+                            ),
+                  ),
+
+                  const SizedBox(height: 12),
 
                   _SocialAuthButton(
                     label: l.continueWithGoogle,

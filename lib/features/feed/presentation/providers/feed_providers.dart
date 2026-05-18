@@ -3,22 +3,23 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:cpapp/core/constants/app_constants.dart';
 import 'package:cpapp/core/providers/city_preference_provider.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
-import 'package:cpapp/features/broker_network/presentation/providers/network_providers.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
 import 'package:cpapp/features/listing/domain/entities/listing_category.dart';
 import 'package:cpapp/features/listing/domain/entities/property_type.dart';
+import 'package:cpapp/features/listing/domain/repositories/listing_repository.dart';
 import 'package:cpapp/features/listing/presentation/providers/listing_providers.dart';
+import 'package:cpapp/features/organisation/presentation/providers/org_providers.dart';
 
 part 'feed_providers.g.dart';
 
 // ── Feed mode ─────────────────────────────────────────────────────────────────
 
-enum FeedMode { all, network, mine }
+enum FeedMode { all, mine, inquired }
 
 // ── Feed state ────────────────────────────────────────────────────────────────
 
 class FeedState {
-  const FeedState({
+  FeedState({
     this.listings = const [],
     this.isLoading = false,
     this.isLoadingMore = false,
@@ -27,9 +28,11 @@ class FeedState {
     this.propertyTypeFilter,
     this.cityFilter,
     this.likedIds = const {},
-    this.viewedIds = const {},
+    this.contactedIds = const {},
     this.mode = FeedMode.all,
+    this.searchQuery = '',
     this.error,
+    this.orgRestrictedUid,
   });
 
   final List<Listing> listings;
@@ -41,14 +44,52 @@ class FeedState {
   /// Non-null, non-empty string = filter by city. Null or empty = all cities.
   final String? cityFilter;
   final Set<String> likedIds;
-  final Set<String> viewedIds;
+  final Set<String> contactedIds;
   final FeedMode mode;
+
+  /// Non-null when an org admin has restricted team members to see only their
+  /// own listings. Contains the admin's UID used as a brokerUids filter.
+  final String? orgRestrictedUid;
+
+  /// Free-text search across loaded listings. Filtering is local to the
+  /// already-fetched page set; older listings beyond the loaded window won't
+  /// surface until the user paginates further. Empty = show everything.
+  final String searchQuery;
+
   final String? error;
 
   int get activeFilterCount =>
       (categoryFilter != null ? 1 : 0) + (propertyTypeFilter != null ? 1 : 0);
 
   bool isLiked(String listingId) => likedIds.contains(listingId);
+  bool isContacted(String listingId) => contactedIds.contains(listingId);
+
+  /// Listings the UI should render — `listings` filtered by [searchQuery].
+  /// Multi-word queries require every token to appear somewhere in the
+  /// listing's combined haystack (case-insensitive substring).
+  late final List<Listing> visibleListings = _applySearch();
+
+  List<Listing> _applySearch() {
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return listings;
+    final tokens =
+        q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+    if (tokens.isEmpty) return listings;
+    return listings.where((l) {
+      final haystack = [
+        l.title ?? '',
+        l.description ?? '',
+        l.city,
+        l.location,
+        l.brokerName,
+        l.brokerageAmount ?? '',
+        l.priceLabel,
+        l.category.label,
+        l.propertyType?.label ?? '',
+      ].join(' ').toLowerCase();
+      return tokens.every(haystack.contains);
+    }).toList();
+  }
 
   FeedState copyWith({
     List<Listing>? listings,
@@ -62,10 +103,13 @@ class FeedState {
     String? cityFilter,
     bool clearCity = false,
     Set<String>? likedIds,
-    Set<String>? viewedIds,
+    Set<String>? contactedIds,
     FeedMode? mode,
+    String? searchQuery,
     String? error,
     bool clearError = false,
+    String? orgRestrictedUid,
+    bool clearOrgRestriction = false,
   }) {
     return FeedState(
       listings: listings ?? this.listings,
@@ -79,9 +123,13 @@ class FeedState {
           : (propertyTypeFilter ?? this.propertyTypeFilter),
       cityFilter: clearCity ? null : (cityFilter ?? this.cityFilter),
       likedIds: likedIds ?? this.likedIds,
-      viewedIds: viewedIds ?? this.viewedIds,
+      contactedIds: contactedIds ?? this.contactedIds,
       mode: mode ?? this.mode,
+      searchQuery: searchQuery ?? this.searchQuery,
       error: clearError ? null : (error ?? this.error),
+      orgRestrictedUid: clearOrgRestriction
+          ? null
+          : (orgRestrictedUid ?? this.orgRestrictedUid),
     );
   }
 }
@@ -93,12 +141,23 @@ class Feed extends _$Feed {
   static const int _pageSize = AppConstants.feedPageSize;
 
   DateTime? _lastLoadMoreAt;
+  // Tracks viewed IDs in-memory only — no state update so no list rebuild.
+  final Set<String> _viewedIds = {};
 
   @override
   FeedState build() {
     final city = ref.watch(cityPreferenceProvider);
-    Future.microtask(() => _loadFirstPage());
-    return FeedState(isLoading: true, cityFilter: city);
+    final orgRestrictedUid = ref.watch(orgFeedRestrictionProvider);
+    bool cancelled = false;
+    ref.onDispose(() => cancelled = true);
+    Future.microtask(() {
+      if (!cancelled) _loadFirstPage();
+    });
+    return FeedState(
+      isLoading: true,
+      cityFilter: city,
+      orgRestrictedUid: orgRestrictedUid,
+    );
   }
 
   // ── Internal loaders ───────────────────────────────────────────────────────
@@ -108,13 +167,8 @@ class Feed extends _$Feed {
     final uid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
 
     List<String>? brokerUids;
-    if (state.mode == FeedMode.network) {
-      final connectedUids = ref.read(connectedUidsProvider);
-      if (connectedUids.isEmpty) {
-        state = state.copyWith(isLoading: false, listings: [], hasMore: false);
-        return;
-      }
-      brokerUids = connectedUids;
+    if (state.orgRestrictedUid != null) {
+      brokerUids = [state.orgRestrictedUid!];
     } else if (state.mode == FeedMode.mine) {
       if (uid.isEmpty) {
         state = state.copyWith(isLoading: false, listings: [], hasMore: false);
@@ -123,8 +177,7 @@ class Feed extends _$Feed {
       brokerUids = [uid];
     }
 
-    final likedFuture = repo.fetchLikedListingIds(uid);
-    final listingsFuture = repo.fetchListings(
+    final listingsResult = await repo.fetchListings(
       category: state.categoryFilter,
       propertyType: state.propertyTypeFilter,
       limit: _pageSize,
@@ -133,68 +186,129 @@ class Feed extends _$Feed {
       city: state.cityFilter,
     );
 
-    final likedResult = await likedFuture;
-    final listingsResult = await listingsFuture;
+    List<Listing>? listings;
+    String? loadError;
+    listingsResult.fold((f) => loadError = f.message, (l) => listings = l);
 
-    final likedIds = likedResult.fold(
-      (_) => state.likedIds,
-      (ids) => ids.toSet(),
+    if (loadError != null) {
+      state = state.copyWith(isLoading: false, error: loadError);
+      return;
+    }
+
+    final page = listings!;
+    final (likedIds, contactedIds) =
+        await _batchStatusForPage(uid, page, state.likedIds, state.contactedIds, repo);
+
+    state = state.copyWith(
+      isLoading: false,
+      clearError: true,
+      listings: page,
+      likedIds: likedIds,
+      contactedIds: contactedIds,
+      hasMore: page.length >= _pageSize,
     );
+  }
 
-    listingsResult.fold(
-      (failure) => state = state.copyWith(
-        isLoading: false,
-        likedIds: likedIds,
-        error: failure.message,
-      ),
-      (listings) => state = state.copyWith(
-        isLoading: false,
-        clearError: true,
-        listings: listings,
-        likedIds: likedIds,
-        hasMore: listings.length >= _pageSize,
-      ),
+  /// Batch-fetches like and inquired status only for [page]'s listing IDs,
+  /// merges the results into the existing sets, and returns the updated pair.
+  Future<(Set<String>, Set<String>)> _batchStatusForPage(
+    String uid,
+    List<Listing> page,
+    Set<String> existingLiked,
+    Set<String> existingContacted,
+    ListingRepository repo,
+  ) async {
+    if (uid.isEmpty || page.isEmpty) return (existingLiked, existingContacted);
+    final ids = page.map((l) => l.id).toList();
+    final results = await Future.wait([
+      repo.fetchLikedStatusBatch(uid, ids),
+      repo.fetchInquiredStatusBatch(uid, ids),
+    ]);
+    final likedMap     = results[0].fold((_) => <String, bool>{}, (m) => m);
+    final contactedMap = results[1].fold((_) => <String, bool>{}, (m) => m);
+    return (
+      _mergeStatusSet(existingLiked, likedMap),
+      _mergeStatusSet(existingContacted, contactedMap),
+    );
+  }
+
+  static Set<String> _mergeStatusSet(
+    Set<String> existing,
+    Map<String, bool> statusMap,
+  ) {
+    if (statusMap.isEmpty) return existing;
+    final updated = Set<String>.from(existing);
+    for (final entry in statusMap.entries) {
+      if (entry.value) {
+        updated.add(entry.key);
+      } else {
+        updated.remove(entry.key);
+      }
+    }
+    return updated;
+  }
+
+  /// Marks a listing as inquired in both local state and Firestore.
+  Future<void> markInquired(String listingId) async {
+    final uid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+    if (uid.isEmpty) return;
+    final newIds = Set<String>.from(state.contactedIds)..add(listingId);
+    state = state.copyWith(contactedIds: newIds);
+    await ref.read(listingRepositoryProvider).recordInquiry(
+      listingId: listingId,
+      uid: uid,
     );
   }
 
   Future<void> _loadNextPage() async {
     final last = state.listings.isNotEmpty ? state.listings.last : null;
     final uid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final repo = ref.read(listingRepositoryProvider);
 
     List<String>? brokerUids;
-    if (state.mode == FeedMode.network) {
-      brokerUids = ref.read(connectedUidsProvider);
+    if (state.orgRestrictedUid != null) {
+      brokerUids = [state.orgRestrictedUid!];
     } else if (state.mode == FeedMode.mine) {
       brokerUids = [uid];
     }
 
-    final result = await ref.read(listingRepositoryProvider).fetchListings(
-          category: state.categoryFilter,
-          propertyType: state.propertyTypeFilter,
-          lastCreatedAt: last?.createdAt,
-          lastListingId: last?.id,
-          limit: _pageSize,
-          brokerUids: brokerUids,
-          currentUid: uid,
-          city: state.cityFilter,
-        );
+    final result = await repo.fetchListings(
+      category: state.categoryFilter,
+      propertyType: state.propertyTypeFilter,
+      lastCreatedAt: last?.createdAt,
+      lastListingId: last?.id,
+      limit: _pageSize,
+      brokerUids: brokerUids,
+      currentUid: uid,
+      city: state.cityFilter,
+    );
 
-    result.fold(
-      (failure) => state = state.copyWith(
-        isLoadingMore: false,
-        error: failure.message,
-      ),
-      (more) => state = state.copyWith(
-        isLoadingMore: false,
-        listings: [...state.listings, ...more],
-        hasMore: more.length >= _pageSize,
-      ),
+    List<Listing>? more;
+    String? loadError;
+    result.fold((f) => loadError = f.message, (l) => more = l);
+
+    if (loadError != null) {
+      state = state.copyWith(isLoadingMore: false, error: loadError);
+      return;
+    }
+
+    final page = more!;
+    final (likedIds, contactedIds) =
+        await _batchStatusForPage(uid, page, state.likedIds, state.contactedIds, repo);
+
+    state = state.copyWith(
+      isLoadingMore: false,
+      listings: [...state.listings, ...page],
+      likedIds: likedIds,
+      contactedIds: contactedIds,
+      hasMore: page.length >= _pageSize,
     );
   }
 
   // ── Public actions ─────────────────────────────────────────────────────────
 
   Future<void> refresh() async {
+    _viewedIds.clear();
     state = FeedState(
       isLoading: true,
       categoryFilter: state.categoryFilter,
@@ -202,8 +316,18 @@ class Feed extends _$Feed {
       cityFilter: state.cityFilter,
       mode: state.mode,
       likedIds: state.likedIds,
+      searchQuery: state.searchQuery,
+      orgRestrictedUid: state.orgRestrictedUid,
     );
     await _loadFirstPage();
+  }
+
+  /// Update the search query. Filtering is local — no network call. Stored on
+  /// state so it survives mode/filter switches and so derived widgets can
+  /// observe it via `select`.
+  void setSearchQuery(String q) {
+    if (q == state.searchQuery) return;
+    state = state.copyWith(searchQuery: q);
   }
 
   Future<void> loadMore() async {
@@ -220,6 +344,12 @@ class Feed extends _$Feed {
 
   void setFeedMode(FeedMode mode) {
     if (state.mode == mode) return;
+    // Inquired tab uses inquiredListingsProvider — no feed load needed.
+    if (mode == FeedMode.inquired) {
+      state = state.copyWith(mode: mode);
+      return;
+    }
+    // Switching away from inquired back to all/mine needs a real load.
     state = FeedState(
       isLoading: true,
       categoryFilter: state.categoryFilter,
@@ -227,6 +357,9 @@ class Feed extends _$Feed {
       cityFilter: state.cityFilter,
       mode: mode,
       likedIds: state.likedIds,
+      contactedIds: state.contactedIds,
+      searchQuery: state.searchQuery,
+      orgRestrictedUid: state.orgRestrictedUid,
     );
     Future.microtask(() => _loadFirstPage());
   }
@@ -249,6 +382,8 @@ class Feed extends _$Feed {
       cityFilter: state.cityFilter,
       mode: state.mode,
       likedIds: state.likedIds,
+      searchQuery: state.searchQuery,
+      orgRestrictedUid: state.orgRestrictedUid,
     );
     Future.microtask(() => _loadFirstPage());
   }
@@ -286,14 +421,10 @@ class Feed extends _$Feed {
   }
 
   Future<void> trackView(Listing listing) async {
-    if (state.viewedIds.contains(listing.id)) return;
+    if (_viewedIds.contains(listing.id)) return;
     final uid = ref.read(authStateChangesProvider).valueOrNull?.uid;
     if (uid == null) return;
-
-    state = state.copyWith(
-      viewedIds: {...state.viewedIds, listing.id},
-    );
-
+    _viewedIds.add(listing.id); // local-only — no state rebuild
     await ref.read(listingRepositoryProvider).incrementView(
           listingId: listing.id,
           uid: uid,

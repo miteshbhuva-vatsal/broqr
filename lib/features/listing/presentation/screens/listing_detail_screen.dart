@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,6 @@ import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/feed/presentation/providers/feed_providers.dart';
 import 'package:cpapp/features/listing/data/services/listing_pdf_service.dart';
-import 'package:cpapp/shared/widgets/phone_otp_sheet.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
 import 'package:cpapp/features/listing/presentation/providers/listing_providers.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
@@ -42,6 +42,19 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   bool _pdfLoading = false;
   bool _phoneRevealed = false;
   final _shareKey = GlobalKey();
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   Listing? _findListing() {
     // Check feed cache first (instant, no Firestore call)
@@ -82,10 +95,10 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
       await Share.shareXFiles(
         [XFile(path)],
         text: shareText,
-        subject: '${l.category.label} on CPApp',
+        subject: '${l.category.label} on DigiProp',
       );
     } catch (_) {
-      await Share.share(shareText, subject: '${l.category.label} on CPApp');
+      await Share.share(shareText, subject: '${l.category.label} on DigiProp');
     }
   }
 
@@ -112,75 +125,84 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   Future<void> _onContactTap(Listing l) async {
     final user = ref.read(authStateChangesProvider).valueOrNull;
     if (user == null) return;
-    final isVerified = ref.read(isPhoneVerifiedProvider);
-    if (isVerified) {
-      await _doContact(l);
-    } else {
-      if (!mounted) return;
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => PhoneOtpSheet(
-          initialPhone: user.mobile,
-          onVerified: () => Future.microtask(() => _doContact(l)),
-        ),
-      );
-    }
+    await _doContact(l);
   }
 
   Future<void> _doContact(Listing l) async {
     final user = ref.read(authStateChangesProvider).valueOrNull;
     if (user == null) return;
 
-    bool leadAdded = false;
-    try {
-      await FirebaseFirestore.instance.collection('leads').add({
-        'ownerUid': l.brokerUid,
-        'clientName': user.name,
-        'clientPhone': user.mobile?.isNotEmpty == true ? user.mobile : null,
-        'stage': 'newLead',
-        'priority': 'medium',
-        'linkedListingId': l.id,
-        'linkedListingCity': l.city,
-        'linkedListingPrice': l.priceLabel,
-        'notes': <Map<String, dynamic>>[],
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      leadAdded = true;
-    } catch (_) {}
+    final phone = user.mobile?.isNotEmpty == true ? user.mobile : null;
 
-    // Notify the listing owner (fire-and-forget; skip if user is the owner)
-    if (user.uid != l.brokerUid) {
+    final result = await ref.read(crmRepositoryProvider).createContactLead(
+          brokerUid: l.brokerUid,
+          clientName: user.name,
+          clientPhone: phone,
+          listingId: l.id,
+          listingCity: l.city,
+          listingPriceLabel: l.priceLabel,
+        );
+
+    final outcome = result.fold<ContactLeadOutcome?>(
+      (_) => null,
+      (o) => o,
+    );
+
+    // Notify the listing owner only when a fresh lead was actually created
+    // (skip for self-contact and dedup'd retries).
+    if (outcome == ContactLeadOutcome.created && user.uid != l.brokerUid) {
+      final contactLine =
+          phone != null ? '${user.name} • +91 $phone' : user.name;
       unawaited(
         ref.read(notificationRemoteDataSourceProvider).createNotification(
           recipientUid: l.brokerUid,
-          type: NotificationType.listingInquiry,
-          title: 'New inquiry on your listing',
-          body: '${user.name} is interested in your ${l.category.label} in ${l.city}',
+          type: NotificationType.newLead,
+          title: '🔔 New Lead on your listing',
+          body: '$contactLine is interested in your '
+              '${l.category.label} in ${l.city}',
           actorUid: user.uid,
           targetId: l.id,
         ),
       );
     }
 
-    if (mounted) {
-      setState(() => _phoneRevealed = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            leadAdded
-                ? '✅ Your inquiry has been sent to the broker!'
-                : (l.brokerPhone == null || l.brokerPhone!.isEmpty
-                    ? AppLocalizations.of(context).noBrokerPhone
-                    : '✅ Broker contact revealed below'),
-          ),
-          backgroundColor: leadAdded ? AppColors.success : AppColors.navyMid,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    // Mark as inquired in feed state + persist to Firestore for both outcomes
+    // (created = fresh inquiry; alreadyExisted = repeat tap, already recorded).
+    if (outcome != null) {
+      unawaited(ref.read(feedProvider.notifier).markInquired(l.id));
     }
+
+    if (!mounted) return;
+    setState(() => _phoneRevealed = true);
+
+    final brokerPhone = l.brokerPhone?.isNotEmpty == true ? l.brokerPhone : null;
+    final String message;
+    final Color bg;
+    switch (outcome) {
+      case ContactLeadOutcome.created:
+        message = brokerPhone != null
+            ? '✅ Your inquiry has been submitted to Lead Owner, you can contact him now with mobile number +91 $brokerPhone'
+            : '✅ Your inquiry has been submitted to Lead Owner.';
+        bg = AppColors.success;
+      case ContactLeadOutcome.alreadyExisted:
+        message = brokerPhone != null
+            ? '📋 Inquiry already submitted. You can contact the Lead Owner at +91 $brokerPhone'
+            : '📋 You already contacted this listing';
+        bg = AppColors.navyMid;
+      case null:
+        message = brokerPhone == null
+            ? AppLocalizations.of(context).noBrokerPhone
+            : '✅ Broker contact revealed below';
+        bg = AppColors.navyMid;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: bg,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   @override
@@ -211,6 +233,15 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
     final isLiked = ref.watch(
       feedProvider.select((s) => s.isLiked(listing.id)),
     );
+    final isContacted = ref.watch(
+      feedProvider.select((s) => s.isContacted(listing.id)),
+    );
+    final revealed = _phoneRevealed || isContacted;
+    final myUid = ref.watch(authStateChangesProvider).valueOrNull?.uid ?? '';
+    final isBuyer = ref.watch(
+      authStateChangesProvider.select((s) => s.valueOrNull?.isBuyer ?? false),
+    );
+    final isMyListing = listing.brokerUid == myUid;
     final allImages = [listing.heroImageUrl, ...listing.additionalImageUrls];
 
     return Scaffold(
@@ -219,7 +250,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
         slivers: [
           // ── Hero image app bar ──────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: MediaQuery.of(context).size.height * 0.58,
+            expandedHeight: MediaQuery.of(context).size.height * 0.52,
             pinned: true,
             backgroundColor: isDark ? AppColors.navyDark : AppColors.white,
             leading: GestureDetector(
@@ -282,241 +313,349 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                 ),
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: RepaintBoundary(
-                key: _shareKey,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    PageView.builder(
+            flexibleSpace: RepaintBoundary(
+              key: _shareKey,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      final v = details.primaryVelocity ?? 0;
+                      if (v < -200 &&
+                          _currentImage < allImages.length - 1) {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeInOut,
+                        );
+                      } else if (v > 200 && _currentImage > 0) {
+                        _pageController.previousPage(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    },
+                    child: PageView.builder(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
                       itemCount: allImages.length,
                       onPageChanged: (i) => setState(() => _currentImage = i),
-                      itemBuilder: (_, i) => CachedNetworkImage(
-                        imageUrl: allImages[i],
-                        fit: BoxFit.cover,
-                        memCacheWidth: 1080,
-                        placeholder: (_, __) => Container(
-                          color: isDark
-                              ? AppColors.navyMid
-                              : AppColors.surfaceLight,
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: AppColors.surfaceLight,
-                          child: const Icon(
-                            Icons.image_not_supported_outlined,
-                            color: AppColors.textHint,
-                            size: 48,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // CPApp logo badge — top-right tiny gold text
-                    const Positioned(
-                      top: 56,
-                      right: 16,
-                      child: Text(
-                        'CPApp',
-                        style: TextStyle(
-                          color: AppColors.gold,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    // Price overlay + dots grouped at bottom
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      itemBuilder: (_, i) => Stack(
+                        fit: StackFit.expand,
                         children: [
-                          // Image dots ABOVE the price overlay
-                          if (allImages.length > 1)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(
-                                  allImages.length,
-                                  (i) => AnimatedContainer(
-                                    duration:
-                                        const Duration(milliseconds: 200),
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 3,),
-                                    width: _currentImage == i ? 18 : 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                      color: _currentImage == i
-                                          ? AppColors.gold
-                                          : Colors.white54,
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                  ),
+                          // Blurred hero as instant placeholder for every image
+                          Transform.scale(
+                            scale: 1.15,
+                            child: ImageFiltered(
+                              imageFilter: ui.ImageFilter.blur(
+                                sigmaX: 28, sigmaY: 28,
+                              ),
+                              child: CachedNetworkImage(
+                                imageUrl: listing.heroImageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  color: isDark
+                                      ? AppColors.navyMid
+                                      : AppColors.surfaceLight,
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: isDark
+                                      ? AppColors.navyMid
+                                      : AppColors.surfaceLight,
                                 ),
                               ),
                             ),
-                          // Price overlay with gradient background
-                          Container(
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                stops: [0.0, 1.0],
-                                colors: [
-                                  Colors.transparent,
-                                  Color(0xF80A1628),
-                                ],
+                          ),
+                          // Full-res image fades in on top once downloaded
+                          CachedNetworkImage(
+                            imageUrl: allImages[i],
+                            fit: BoxFit.cover,
+                            memCacheWidth: 1080,
+                            fadeInDuration:
+                                const Duration(milliseconds: 350),
+                            fadeOutDuration: Duration.zero,
+                            placeholder: (_, __) => const SizedBox.shrink(),
+                            errorWidget: (_, __, ___) => Container(
+                              color: AppColors.surfaceLight,
+                              child: const Icon(
+                                Icons.image_not_supported_outlined,
+                                color: AppColors.textHint,
+                                size: 48,
                               ),
-                            ),
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 32, 16, 16),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                // Left: title + price + location
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (listing.title != null &&
-                                          listing.title!.isNotEmpty) ...[
-                                        Text(
-                                          listing.title!.toUpperCase(),
-                                          style: const TextStyle(
-                                            color: AppColors.gold,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 1.0,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                      ],
-                                      _DetailDualPrice(listing: listing),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.location_on_rounded,
-                                            color: AppColors.white,
-                                            size: 13,
-                                          ),
-                                          const SizedBox(width: 3),
-                                          Expanded(
-                                            child: Text(
-                                              '${listing.location}, ${listing.city}',
-                                              style: const TextStyle(
-                                                color: Color(0xCCFFFFFF),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Right: property type pill + area label
-                                if (listing.propertyType != null)
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.gold
-                                              .withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: AppColors.gold
-                                                .withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          listing.propertyType!.label,
-                                          style: const TextStyle(
-                                            color: AppColors.gold,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      if (listing.area > 0) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          listing.areaLabel,
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  // Subtle top gradient for back/action button readability
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.center,
+                        colors: [Color(0x66000000), Colors.transparent],
+                      ),
+                    ),
+                  ),
+                  // DigiProp watermark
+                  const Positioned(
+                    top: 60,
+                    right: 16,
+                    child: Text(
+                      'DigiProp',
+                      style: TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  // Left tap area — go to previous image
+                  if (allImages.length > 1)
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 36,
+                      width: 80,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (_currentImage > 0) {
+                            _pageController.previousPage(
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        },
+                        behavior: HitTestBehavior.translucent,
+                      ),
+                    ),
+                  // Right tap area — go to next image
+                  if (allImages.length > 1)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 36,
+                      width: 80,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (_currentImage < allImages.length - 1) {
+                            _pageController.nextPage(
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        },
+                        behavior: HitTestBehavior.translucent,
+                      ),
+                    ),
+                  // Page indicator dots
+                  if (allImages.length > 1)
+                    Positioned(
+                      bottom: 36,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          allImages.length,
+                          (i) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 3),
+                            width: _currentImage == i ? 18 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: _currentImage == i
+                                  ? AppColors.gold
+                                  : Colors.white54,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Rounded cap — connects image to body seamlessly
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.navyDark
+                            : AppColors.offWhite,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
 
           // ── Body ────────────────────────────────────────────────────────
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Badges row
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Price / title header block ──────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Badge(
-                        color: listing.category.color,
-                        bgColor: listing.category.bgColor,
-                        label:
-                            '${listing.category.emoji}  ${listing.category.localizedLabel(Localizations.localeOf(context).languageCode)}',
+                      // Category + property type badges
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _Badge(
+                            color: listing.category.color,
+                            bgColor: listing.category.bgColor,
+                            label:
+                                '${listing.category.emoji}  ${listing.category.localizedLabel(Localizations.localeOf(context).languageCode)}',
+                          ),
+                          if (listing.propertyType != null)
+                            _Badge(
+                              color: AppColors.navyMid,
+                              bgColor:
+                                  AppColors.navyMid.withValues(alpha: 0.1),
+                              label:
+                                  '${listing.propertyType!.emoji}  ${listing.propertyType!.label}',
+                            ),
+                        ],
                       ),
-                      if (listing.propertyType != null)
-                        _Badge(
-                          color: AppColors.navyMid,
-                          bgColor: AppColors.navyMid.withValues(alpha: 0.1),
-                          label:
-                              '${listing.propertyType!.emoji}  ${listing.propertyType!.label}',
+                      const SizedBox(height: 14),
+
+                      // Title
+                      if (listing.title != null &&
+                          listing.title!.isNotEmpty) ...[
+                        Text(
+                          listing.title!,
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColors.white
+                                : AppColors.navyDark,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                          ),
                         ),
+                        const SizedBox(height: 10),
+                      ],
+
+                      // Price
+                      _DetailDualPrice(listing: listing),
+                      const SizedBox(height: 10),
+
+                      // Location
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_rounded,
+                            color: AppColors.gold,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              '${listing.location}, ${listing.city}',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColors.textOnDarkSecondary
+                                    : AppColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Row 1 — Property type / area / brokerage chips
+                      if (listing.propertyType != null ||
+                          listing.area > 0 ||
+                          (listing.brokerageAmount?.isNotEmpty ?? false)) ...[
+                        const SizedBox(height: 14),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          clipBehavior: Clip.none,
+                          child: Row(
+                            children: [
+                              if (listing.propertyType != null)
+                                _DetailInfoChip(
+                                  label:
+                                      '${listing.propertyType!.emoji} ${listing.propertyType!.label}',
+                                  isDark: isDark,
+                                ),
+                              if (listing.area > 0) ...[
+                                const SizedBox(width: 8),
+                                _DetailInfoChip(
+                                  label: '📐 ${listing.areaLabel}',
+                                  isDark: isDark,
+                                ),
+                              ],
+                              if (listing.brokerageAmount?.isNotEmpty ??
+                                  false) ...[
+                                const SizedBox(width: 8),
+                                _DetailBrokerageChip(
+                                  amount: listing.brokerageAmount!,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Row 2 — Instagram & PDF links (always visible when present)
+                      if ((listing.instagramUrl?.isNotEmpty ?? false) ||
+                          (listing.pdfUrl?.isNotEmpty ?? false)) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            if (listing.instagramUrl?.isNotEmpty ?? false)
+                              _DetailInstagramChip(
+                                url: listing.instagramUrl!,
+                                isDark: isDark,
+                              ),
+                            if ((listing.instagramUrl?.isNotEmpty ?? false) &&
+                                (listing.pdfUrl?.isNotEmpty ?? false))
+                              const SizedBox(width: 10),
+                            if (listing.pdfUrl?.isNotEmpty ?? false)
+                              _DetailPdfChip(
+                                url: listing.pdfUrl!,
+                                listingId: listing.id,
+                                isDark: isDark,
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 20),
+                ),
 
-                  // Key specs card
-                  _SpecsRow(listing: listing),
-                  const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                  // About / Description card
-                  if (listing.description != null &&
-                      listing.description!.isNotEmpty) ...[
-                    _SectionCard(
+                // ── Key specs card ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _SpecsRow(listing: listing),
+                ),
+                const SizedBox(height: 16),
+
+                // ── About / Description ───────────────────────────────────────
+                if (listing.description != null &&
+                    listing.description!.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _SectionCard(
                       isDark: isDark,
                       header: AppLocalizations.of(context).aboutThisProperty,
                       child: Text(
@@ -529,51 +668,58 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
-                  // Broker card — dark navy gradient
-                  _BrokerCard(
+                // ── Broker card ───────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _BrokerCard(
                     listing: listing,
                     isDark: isDark,
-                    phoneRevealed: _phoneRevealed,
+                    phoneRevealed: revealed,
+                    isMyListing: isMyListing,
                     onContactTap: () => _onContactTap(listing),
                   ),
+                ),
 
-                  // Brokerage strip (outside broker card)
-                  if (listing.brokerageAmount != null &&
-                      listing.brokerageAmount!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 38,
+                // ── Brokerage strip ───────────────────────────────────────────
+                if (listing.brokerageAmount != null &&
+                    listing.brokerageAmount!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      height: 44,
                       decoration: BoxDecoration(
                         color: AppColors.gold.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                         border: const Border(
                           left: BorderSide(color: AppColors.gold, width: 3),
                         ),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
                         children: [
                           const Icon(
                             Icons.handshake_rounded,
-                            size: 14,
+                            size: 16,
                             color: AppColors.gold,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
                             AppLocalizations.of(context).brokerage,
                             style: AppTypography.labelSmall.copyWith(
                               color: AppColors.textSecondary,
-                              fontSize: 11,
+                              fontSize: 12,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                              horizontal: 12,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.navyDark,
@@ -584,32 +730,37 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                               style: AppTypography.labelSmall.copyWith(
                                 color: AppColors.gold,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 11,
+                                fontSize: 13,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-
-                  const SizedBox(height: 16),
-
-                  // Leads section wrapped in gold-bordered card
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDark : AppColors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.gold.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: _LeadsSection(listing: listing),
                   ),
-                  const SizedBox(height: 100),
                 ],
-              ),
+
+                const SizedBox(height: 16),
+
+                // ── Leads section (sellers only) ──────────────────────────────
+                if (!isBuyer)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceDark : AppColors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: _LeadsSection(listing: listing),
+                    ),
+                  ),
+
+                const SizedBox(height: 100),
+              ],
             ),
           ),
         ],
@@ -651,53 +802,59 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                     label: '${listing.viewsCount}',
                     onTap: null,
                   ),
-                  const SizedBox(width: 12),
-                  // Contact Lead Owner CTA
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: _phoneRevealed ? null : () => _onContactTap(listing),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        height: 48,
-                        decoration: BoxDecoration(
-                          gradient: _phoneRevealed ? null : AppColors.goldGradient,
-                          color: _phoneRevealed
-                              ? AppColors.success.withValues(alpha: 0.12)
-                              : null,
-                          border: _phoneRevealed
-                              ? Border.all(color: AppColors.success, width: 1.5)
-                              : null,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.phone_outlined,
-                              size: 16,
-                              color: _phoneRevealed
-                                  ? AppColors.success
-                                  : AppColors.navyDark,
-                            ),
-                            const SizedBox(width: 8),
-                            Builder(
-                              builder: (ctx) => Text(
-                                AppLocalizations.of(ctx).contactLeadOwner,
-                                style: AppTypography.labelMedium.copyWith(
-                                  color: _phoneRevealed
-                                      ? AppColors.success
-                                      : AppColors.navyDark,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
+                  if (!isMyListing) ...[
+                    const SizedBox(width: 12),
+                    // Contact Lead Owner CTA
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: revealed ? null : () => _onContactTap(listing),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: revealed ? null : AppColors.goldGradient,
+                            color: revealed
+                                ? AppColors.success.withValues(alpha: 0.12)
+                                : null,
+                            border: revealed
+                                ? Border.all(color: AppColors.success, width: 1.5)
+                                : null,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                revealed
+                                    ? Icons.check_circle_rounded
+                                    : Icons.phone_outlined,
+                                size: 16,
+                                color: revealed
+                                    ? AppColors.success
+                                    : AppColors.navyDark,
+                              ),
+                              const SizedBox(width: 8),
+                              Builder(
+                                builder: (ctx) => Text(
+                                  revealed
+                                      ? 'Inquired'
+                                      : AppLocalizations.of(ctx).contactLeadOwner,
+                                  style: AppTypography.labelMedium.copyWith(
+                                    color: revealed
+                                        ? AppColors.success
+                                        : AppColors.navyDark,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -926,12 +1083,14 @@ class _BrokerCard extends StatelessWidget {
     required this.listing,
     required this.isDark,
     required this.phoneRevealed,
+    required this.isMyListing,
     required this.onContactTap,
   });
 
   final Listing listing;
   final bool isDark;
   final bool phoneRevealed;
+  final bool isMyListing;
   final VoidCallback onContactTap;
 
   Future<void> _call() async {
@@ -1085,7 +1244,8 @@ class _BrokerCard extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // ── CTA button ───────────────────────────────────────────────────
+          // ── CTA button (hidden for own listings) ─────────────────────────
+          if (!isMyListing)
           GestureDetector(
             onTap: phoneRevealed ? (hasPhone ? _call : null) : onContactTap,
             child: AnimatedContainer(
@@ -1107,7 +1267,7 @@ class _BrokerCard extends StatelessWidget {
                 children: [
                   Icon(
                     phoneRevealed
-                        ? Icons.call_rounded
+                        ? Icons.check_circle_rounded
                         : Icons.phone_outlined,
                     size: 15,
                     color: phoneRevealed
@@ -1116,7 +1276,9 @@ class _BrokerCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    AppLocalizations.of(context).contactLeadOwner,
+                    phoneRevealed
+                        ? 'Inquired'
+                        : AppLocalizations.of(context).contactLeadOwner,
                     style: AppTypography.labelMedium.copyWith(
                       color: phoneRevealed
                           ? AppColors.success
@@ -1177,6 +1339,7 @@ class _DetailDualPrice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final discount = listing.discountPercent;
     final hasDiscount = discount != null && discount > 0;
 
@@ -1184,29 +1347,35 @@ class _DetailDualPrice extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Deal price — large and prominent
         Text(
           listing.priceLabel,
-          style: AppTypography.priceTag.copyWith(fontSize: 28),
+          style: const TextStyle(
+            color: AppColors.gold,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
         ),
         if (hasDiscount) ...[
           const SizedBox(height: 4),
           Row(
             children: [
-              // Strikethrough MRP
               Text(
                 listing.originalPriceLabel!,
-                style: const TextStyle(
-                  color: Colors.white60,
+                style: TextStyle(
+                  color: isDark
+                      ? AppColors.textOnDarkSecondary
+                      : AppColors.textSecondary,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   decoration: TextDecoration.lineThrough,
-                  decorationColor: Colors.white60,
+                  decorationColor: isDark
+                      ? AppColors.textOnDarkSecondary
+                      : AppColors.textSecondary,
                   decorationThickness: 1.5,
                 ),
               ),
               const SizedBox(width: 8),
-              // Savings badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
@@ -1227,6 +1396,91 @@ class _DetailDualPrice extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ── Detail chip widgets ───────────────────────────────────────────────────────
+
+class _DetailInfoChip extends StatelessWidget {
+  const _DetailInfoChip({required this.label, required this.isDark});
+  final String label;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.border,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isDark ? AppColors.white : AppColors.navyDark,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailBrokerageChip extends StatelessWidget {
+  const _DetailBrokerageChip({required this.amount, required this.isDark});
+  final String amount;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPercent = amount.contains('%');
+    final numeric = hasPercent ? amount.replaceAll('%', '').trim() : amount;
+    final symbol = hasPercent ? '%' : '';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: isDark ? 0.6 : 0.7),
+        ),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 12),
+          children: [
+            const TextSpan(text: '🤝 '),
+            TextSpan(
+              text: 'Brokerage ',
+              style: TextStyle(
+                color: isDark
+                    ? AppColors.textOnDarkSecondary
+                    : AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            TextSpan(
+              text: numeric,
+              style: TextStyle(
+                color: isDark ? AppColors.white : AppColors.navyDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            TextSpan(
+              text: symbol,
+              style: const TextStyle(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1440,6 +1694,195 @@ class _LeadRow extends ConsumerWidget {
               Icons.chevron_right_rounded,
               size: 16,
               color: AppColors.textHint,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── PDF chip (detail screen) ──────────────────────────────────────────────────
+
+class _DetailPdfChip extends StatefulWidget {
+  const _DetailPdfChip({
+    required this.url,
+    required this.listingId,
+    required this.isDark,
+  });
+  final String url;
+  final String listingId;
+  final bool isDark;
+
+  @override
+  State<_DetailPdfChip> createState() => _DetailPdfChipState();
+}
+
+class _DetailPdfChipState extends State<_DetailPdfChip> {
+  bool _downloading = false;
+  double? _progress;
+
+  Future<String> _localPath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final folder = Directory('${dir.path}/listing_pdfs');
+    if (!folder.existsSync()) folder.createSync(recursive: true);
+    return '${folder.path}/${widget.listingId}.pdf';
+  }
+
+  Future<void> _handleTap() async {
+    if (_downloading) return;
+    final path = await _localPath();
+    final file = File(path);
+    if (!file.existsSync()) {
+      if (!mounted) return;
+      setState(() { _downloading = true; _progress = 0; });
+      try {
+        await Dio().download(
+          widget.url,
+          path,
+          onReceiveProgress: (received, total) {
+            if (mounted && total > 0) {
+              setState(() { _progress = received / total; });
+            }
+          },
+        );
+      } catch (_) {
+        if (mounted) {
+          setState(() { _downloading = false; _progress = null; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Download failed')),
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() { _downloading = false; _progress = null; });
+    }
+    if (!mounted) return;
+    _showOptions(path);
+  }
+
+  void _showOptions(String path) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Property Document'),
+        content: const Text('Open or share the PDF brochure.'),
+        actions: [
+          TextButton(
+            onPressed: () { Navigator.pop(ctx); OpenFilex.open(path); },
+            child: const Text('Open'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Share.shareXFiles([XFile(path)], text: 'Property Document');
+            },
+            child: const Text('Share'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _handleTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: widget.isDark ? AppColors.surfaceDark : AppColors.offWhite,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFE53935).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_downloading && _progress != null)
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  value: _progress,
+                  strokeWidth: 1.5,
+                  color: const Color(0xFFE53935),
+                ),
+              )
+            else
+              const Icon(Icons.picture_as_pdf_rounded,
+                  size: 14, color: Color(0xFFE53935),),
+            const SizedBox(width: 5),
+            Text(
+              _downloading ? 'Downloading…' : 'PDF',
+              style: AppTypography.labelSmall.copyWith(
+                color: widget.isDark
+                    ? AppColors.textOnDarkSecondary
+                    : AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Instagram chip (detail screen) ────────────────────────────────────────────
+
+class _DetailInstagramChip extends StatelessWidget {
+  const _DetailInstagramChip({required this.url, required this.isDark});
+  final String url;
+  final bool isDark;
+
+  static const _gradient = LinearGradient(
+    colors: [Color(0xFFF9A825), Color(0xFFF4511E), Color(0xFFAD1457), Color(0xFF6A1B9A)],
+    begin: Alignment.bottomLeft,
+    end: Alignment.topRight,
+  );
+
+  Future<void> _launch() async {
+    final uri = Uri.tryParse(url);
+    if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _launch,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : AppColors.offWhite,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShaderMask(
+              shaderCallback: (bounds) => _gradient.createShader(bounds),
+              blendMode: BlendMode.srcIn,
+              child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'Instagram',
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

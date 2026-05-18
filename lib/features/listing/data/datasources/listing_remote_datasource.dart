@@ -31,6 +31,8 @@ abstract interface class ListingRemoteDataSource {
     PropertyType? propertyType,
     String? brokerageAmount,
     String? posterRole,
+    String? instagramUrl,
+    File? pdfFile,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
     void Function(double)? onProgress,
@@ -52,7 +54,37 @@ abstract interface class ListingRemoteDataSource {
     String? city,
   });
 
-  Future<List<ListingModel>> fetchBrokerListings(String brokerUid);
+  Future<List<ListingModel>> fetchBrokerListings(
+    String brokerUid, {
+    DateTime? lastCreatedAt,
+    String? lastDocId,
+    int limit = 20,
+  });
+
+  /// Batch-checks whether [listingIds] appear in the user's `likes`
+  /// subcollection. Returns a map of listingId → liked. Non-fatal: returns
+  /// empty map on error so callers degrade gracefully.
+  Future<Map<String, bool>> fetchLikedStatusBatch(
+    String uid,
+    List<String> listingIds,
+  );
+
+  /// Batch-checks whether [listingIds] appear in the user's `inquiries`
+  /// subcollection. Returns a map of listingId → inquired. Non-fatal.
+  Future<Map<String, bool>> fetchInquiredStatusBatch(
+    String uid,
+    List<String> listingIds,
+  );
+
+  /// Partial update of a listing's broker-editable fields. Caller is the
+  /// listing owner; null parameters are left untouched.
+  Future<void> updateListing({
+    required String listingId,
+    String? title,
+    double? price,
+    String? brokerageAmount,
+    String? description,
+  });
 
   Future<List<String>> fetchLikedListingIds(String uid);
 
@@ -60,7 +92,36 @@ abstract interface class ListingRemoteDataSource {
 
   Future<void> unlikeListing({required String listingId, required String uid});
 
+  Future<List<String>> fetchInquiredListingIds(String uid);
+
+  Future<void> recordInquiry({required String listingId, required String uid});
+
   Future<void> incrementView({required String listingId, required String uid});
+
+  Future<void> deleteListing({required String listingId});
+
+  Future<void> updateListingFull({
+    required String listingId,
+    required ListingCategory category,
+    required String city,
+    required String location,
+    required double area,
+    required AreaUnit areaUnit,
+    required double price,
+    required ListingVisibility visibility,
+    String? title,
+    PropertyType? propertyType,
+    double? originalPrice,
+    String? brokerageAmount,
+    String? instagramUrl,
+    String? description,
+    File? newHeroImageFile,
+    List<File> newAdditionalImageFiles,
+    List<String> keptAdditionalImageUrls,
+    File? newPdfFile,
+    String? existingPdfUrl,
+    void Function(double)? onProgress,
+  });
 }
 
 class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
@@ -92,6 +153,8 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
     PropertyType? propertyType,
     String? brokerageAmount,
     String? posterRole,
+    String? instagramUrl,
+    File? pdfFile,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
     void Function(double)? onProgress,
@@ -99,7 +162,7 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
     try {
       final id = const Uuid().v4();
       final basePath = '${AppConstants.listingImagesPath}/$id';
-      final totalFiles = 1 + additionalImageFiles.length;
+      final totalFiles = 1 + additionalImageFiles.length + (pdfFile != null ? 1 : 0);
       var completed = 0;
 
       Future<String> uploadOne(File f, String p) async {
@@ -109,13 +172,25 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
         return url;
       }
 
-      final heroUrl = await uploadOne(heroImageFile, '$basePath/hero.jpg');
+      // Upload hero + all additional images in parallel to reduce total wait time.
+      final allFiles = [heroImageFile, ...additionalImageFiles];
+      final allPaths = [
+        '$basePath/hero.jpg',
+        for (var i = 0; i < additionalImageFiles.length; i++)
+          '$basePath/image_$i.jpg',
+      ];
+      final urls = await Future.wait([
+        for (var i = 0; i < allFiles.length; i++)
+          uploadOne(allFiles[i], allPaths[i]),
+      ]);
+      final heroUrl = urls[0];
+      final additionalUrls = urls.sublist(1);
 
-      final additionalUrls = <String>[];
-      for (var i = 0; i < additionalImageFiles.length; i++) {
-        additionalUrls.add(
-          await uploadOne(additionalImageFiles[i], '$basePath/image_$i.jpg'),
-        );
+      String? pdfUrl;
+      if (pdfFile != null) {
+        pdfUrl = await _uploadPdf(pdfFile, '$basePath/document.pdf');
+        completed++;
+        onProgress?.call(completed / totalFiles);
       }
 
       final model = ListingModel(
@@ -138,6 +213,8 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
         additionalImageUrls: additionalUrls,
         brokerageAmount: brokerageAmount,
         posterRole: posterRole,
+        instagramUrl: instagramUrl,
+        pdfUrl: pdfUrl,
         visibility: visibility,
         status: ListingStatus.active,
         createdAt: DateTime.now(),
@@ -221,9 +298,10 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
             .limit(limit);
 
         if (lastCreatedAt != null && lastListingId != null) {
+          // FieldPath.documentId cursor must be a full collection/docId path.
           query = query.startAfter([
             Timestamp.fromDate(lastCreatedAt),
-            lastListingId,
+            '${AppConstants.listingsCollection}/$lastListingId',
           ]);
         }
 
@@ -252,16 +330,96 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
   }
 
   @override
-  Future<List<ListingModel>> fetchBrokerListings(String brokerUid) async {
+  Future<List<ListingModel>> fetchBrokerListings(
+    String brokerUid, {
+    DateTime? lastCreatedAt,
+    String? lastDocId,
+    int limit = 20,
+  }) async {
     try {
-      final snap = await _db
+      Query<Map<String, dynamic>> query = _db
           .collection(AppConstants.listingsCollection)
           .where('brokerUid', isEqualTo: brokerUid)
           .orderBy('createdAt', descending: true)
-          .get();
+          .orderBy(FieldPath.documentId, descending: true)
+          .limit(limit);
+      if (lastCreatedAt != null && lastDocId != null) {
+        query = query.startAfter([
+          Timestamp.fromDate(lastCreatedAt),
+          '${AppConstants.listingsCollection}/$lastDocId',
+        ]);
+      }
+      final snap = await query.get();
       return snap.docs.map((d) => ListingModel.fromFirestore(d)).toList();
     } catch (e) {
       throw ServerException('Failed to fetch broker listings: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, bool>> fetchLikedStatusBatch(
+    String uid,
+    List<String> listingIds,
+  ) async {
+    if (listingIds.isEmpty) return {};
+    try {
+      final ref = _db
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .collection('likes');
+      final docs = await Future.wait(listingIds.map((id) => ref.doc(id).get()));
+      return {
+        for (var i = 0; i < listingIds.length; i++) listingIds[i]: docs[i].exists,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  @override
+  Future<Map<String, bool>> fetchInquiredStatusBatch(
+    String uid,
+    List<String> listingIds,
+  ) async {
+    if (listingIds.isEmpty) return {};
+    try {
+      final ref = _db
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .collection('inquiries');
+      final docs = await Future.wait(listingIds.map((id) => ref.doc(id).get()));
+      return {
+        for (var i = 0; i < listingIds.length; i++) listingIds[i]: docs[i].exists,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  @override
+  Future<void> updateListing({
+    required String listingId,
+    String? title,
+    double? price,
+    String? brokerageAmount,
+    String? description,
+  }) async {
+    try {
+      final patch = <String, dynamic>{
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (title != null) patch['title'] = title;
+      if (price != null) patch['price'] = price;
+      if (brokerageAmount != null) patch['brokerageAmount'] = brokerageAmount;
+      if (description != null) patch['description'] = description;
+      // Bail out cheaply if the caller passed nothing meaningful.
+      if (patch.length == 1) return;
+      await _db
+          .collection(AppConstants.listingsCollection)
+          .doc(listingId)
+          .update(patch);
+    } catch (e) {
+      throw ServerException('Failed to update listing: $e');
     }
   }
 
@@ -329,6 +487,37 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
   }
 
   @override
+  Future<List<String>> fetchInquiredListingIds(String uid) async {
+    try {
+      final snap = await _db
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .collection('inquiries')
+          .get();
+      return snap.docs.map((d) => d.id).toList();
+    } catch (e) {
+      throw ServerException('Failed to fetch inquired listings: $e');
+    }
+  }
+
+  @override
+  Future<void> recordInquiry({
+    required String listingId,
+    required String uid,
+  }) async {
+    try {
+      await _db
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .collection('inquiries')
+          .doc(listingId)
+          .set({'inquiredAt': FieldValue.serverTimestamp()});
+    } catch (e) {
+      throw ServerException('Failed to record inquiry: $e');
+    }
+  }
+
+  @override
   Future<void> incrementView({
     required String listingId,
     required String uid,
@@ -351,6 +540,135 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
     } catch (e) {
       throw ServerException('Failed to record view: $e');
     }
+  }
+
+  @override
+  Future<void> deleteListing({required String listingId}) async {
+    try {
+      await _db
+          .collection(AppConstants.listingsCollection)
+          .doc(listingId)
+          .delete();
+    } catch (e) {
+      throw ServerException('Failed to delete listing: $e');
+    }
+  }
+
+  @override
+  Future<void> updateListingFull({
+    required String listingId,
+    required ListingCategory category,
+    required String city,
+    required String location,
+    required double area,
+    required AreaUnit areaUnit,
+    required double price,
+    required ListingVisibility visibility,
+    String? title,
+    PropertyType? propertyType,
+    double? originalPrice,
+    String? brokerageAmount,
+    String? instagramUrl,
+    String? description,
+    File? newHeroImageFile,
+    List<File> newAdditionalImageFiles = const [],
+    List<String> keptAdditionalImageUrls = const [],
+    File? newPdfFile,
+    String? existingPdfUrl,
+    void Function(double)? onProgress,
+  }) async {
+    try {
+      final basePath = '${AppConstants.listingImagesPath}/$listingId';
+      final totalUploads = (newHeroImageFile != null ? 1 : 0) +
+          newAdditionalImageFiles.length +
+          (newPdfFile != null ? 1 : 0);
+      var completed = 0;
+
+      Future<String> uploadOne(File f, String p) async {
+        final url = await _uploadImage(f, p);
+        completed++;
+        onProgress?.call(completed / totalUploads);
+        return url;
+      }
+
+      final patch = <String, dynamic>{
+        'category': category.name,
+        'city': city,
+        'location': location,
+        'area': area,
+        'areaUnit': areaUnit.name,
+        'price': price,
+        'visibility': visibility.name,
+        'propertyType': propertyType?.firestoreKey,
+        'title': (title != null && title.isNotEmpty) ? title : null,
+        'originalPrice': originalPrice,
+        'brokerageAmount':
+            (brokerageAmount != null && brokerageAmount.isNotEmpty)
+                ? brokerageAmount
+                : null,
+        'instagramUrl':
+            (instagramUrl != null && instagramUrl.isNotEmpty)
+                ? instagramUrl
+                : null,
+        'description':
+            (description != null && description.isNotEmpty)
+                ? description
+                : null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (newHeroImageFile != null) {
+        patch['heroImageUrl'] =
+            await uploadOne(newHeroImageFile, '$basePath/hero.jpg');
+      }
+
+      if (newAdditionalImageFiles.isNotEmpty) {
+        final newUrls = await Future.wait([
+          for (var i = 0; i < newAdditionalImageFiles.length; i++)
+            uploadOne(
+              newAdditionalImageFiles[i],
+              '$basePath/image_edit_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
+            ),
+        ]);
+        patch['additionalImageUrls'] = [...keptAdditionalImageUrls, ...newUrls];
+      } else if (keptAdditionalImageUrls.isNotEmpty) {
+        patch['additionalImageUrls'] = keptAdditionalImageUrls;
+      } else {
+        patch['additionalImageUrls'] = <String>[];
+      }
+
+      if (newPdfFile != null) {
+        final pdfUrl =
+            await _uploadPdf(newPdfFile, '$basePath/document.pdf');
+        completed++;
+        onProgress?.call(completed / (totalUploads > 0 ? totalUploads : 1));
+        patch['pdfUrl'] = pdfUrl;
+      } else {
+        patch['pdfUrl'] = existingPdfUrl;
+      }
+
+      await _db
+          .collection(AppConstants.listingsCollection)
+          .doc(listingId)
+          .update(patch);
+    } catch (e) {
+      throw ServerException('Failed to update listing: $e');
+    }
+  }
+
+  Future<String> _uploadPdf(File file, String path) async {
+    if (!file.existsSync()) {
+      throw StorageException('PDF file not found: ${file.path}');
+    }
+    final ref = _storage.ref().child(path);
+    final snapshot = await ref.putFile(
+      file,
+      SettableMetadata(contentType: 'application/pdf'),
+    );
+    if (snapshot.state != TaskState.success) {
+      throw StorageException('PDF upload failed: $path');
+    }
+    return snapshot.ref.getDownloadURL();
   }
 
   Future<String> _uploadImage(File file, String path) async {
@@ -386,7 +704,9 @@ class ListingRemoteDataSourceImpl implements ListingRemoteDataSource {
       final result = await FlutterImageCompress.compressAndGetFile(
         file.absolute.path,
         target,
-        quality: AppConstants.imageQuality,
+        quality: 75,
+        minWidth: 1080,
+        minHeight: 1,
         keepExif: false,
       );
       if (result != null) return File(result.path);

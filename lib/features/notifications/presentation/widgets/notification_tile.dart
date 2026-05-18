@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cpapp/core/theme/app_colors.dart';
+import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/notifications/domain/entities/app_notification.dart';
-
-const _navy = Color(0xFF0A1628);
-const _gold = Color(0xFFD4A843);
 
 class NotificationTile extends StatelessWidget {
   const NotificationTile({
@@ -18,6 +17,14 @@ class NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? AppColors.white : AppColors.navyDark;
+    final bodyColor = isDark ? AppColors.textOnDarkSecondary : AppColors.textSecondary;
+    final timeColor = isDark ? AppColors.textOnDarkSecondary.withValues(alpha: 0.7) : AppColors.textHint;
+    final unreadBg = isDark
+        ? AppColors.gold.withValues(alpha: 0.07)
+        : AppColors.navyDark.withValues(alpha: 0.04);
+
     return Dismissible(
       key: ValueKey(notification.id),
       direction: DismissDirection.endToStart,
@@ -25,13 +32,13 @@ class NotificationTile extends StatelessWidget {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red[400],
-        child: const Icon(Icons.delete_outline, color: Colors.white),
+        color: AppColors.error,
+        child: const Icon(Icons.delete_outline, color: AppColors.white),
       ),
       child: InkWell(
         onTap: onTap,
         child: Container(
-          color: notification.isRead ? null : _navy.withValues(alpha: 0.04),
+          color: notification.isRead ? null : unreadBg,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,12 +54,11 @@ class NotificationTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             notification.title,
-                            style: TextStyle(
+                            style: AppTypography.labelLarge.copyWith(
                               fontWeight: notification.isRead
-                                  ? FontWeight.normal
-                                  : FontWeight.w600,
-                              color: _navy,
-                              fontSize: 14,
+                                  ? FontWeight.w500
+                                  : FontWeight.w700,
+                              color: titleColor,
                             ),
                           ),
                         ),
@@ -61,7 +67,7 @@ class NotificationTile extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: const BoxDecoration(
-                              color: _gold,
+                              color: AppColors.gold,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -70,9 +76,8 @@ class NotificationTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       notification.body,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: bodyColor,
                         height: 1.4,
                       ),
                       maxLines: 2,
@@ -81,8 +86,8 @@ class NotificationTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _timeAgo(notification.createdAt),
-                      style: TextStyle(
-                        color: Colors.grey[400],
+                      style: AppTypography.labelSmall.copyWith(
+                        color: timeColor,
                         fontSize: 11,
                       ),
                     ),
@@ -113,20 +118,20 @@ class _TypeIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, color) = switch (type) {
-      NotificationType.connectionRequest => (Icons.person_add_outlined, _navy),
-      NotificationType.connectionAccepted =>
-        (Icons.handshake_outlined, Colors.green),
-      NotificationType.listingInquiry => (Icons.chat_bubble_outline, _gold),
-      NotificationType.newListing => (Icons.home_work_outlined, _gold),
-      NotificationType.reminderDue => (Icons.alarm_outlined, Colors.orange),
-      NotificationType.general => (Icons.notifications_outlined, Colors.grey),
+      NotificationType.connectionRequest  => (Icons.person_add_outlined,      AppColors.navyMid),
+      NotificationType.connectionAccepted => (Icons.handshake_outlined,        AppColors.success),
+      NotificationType.listingInquiry     => (Icons.chat_bubble_outline,       AppColors.gold),
+      NotificationType.newListing         => (Icons.home_work_outlined,        AppColors.gold),
+      NotificationType.newLead            => (Icons.person_add_outlined,       AppColors.success),
+      NotificationType.reminderDue        => (Icons.alarm_outlined,            AppColors.warning),
+      NotificationType.general            => (Icons.notifications_outlined,    AppColors.textSecondary),
     };
 
     return Container(
       width: 42,
       height: 42,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.12),
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: color, size: 20),

@@ -33,6 +33,8 @@ class ListingRepositoryImpl implements ListingRepository {
     PropertyType? propertyType,
     String? brokerageAmount,
     String? posterRole,
+    String? instagramUrl,
+    File? pdfFile,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
     void Function(double)? onProgress,
@@ -57,6 +59,8 @@ class ListingRepositoryImpl implements ListingRepository {
         additionalImageFiles: additionalImageFiles,
         brokerageAmount: brokerageAmount,
         posterRole: posterRole,
+        instagramUrl: instagramUrl,
+        pdfFile: pdfFile,
         visibility: visibility,
         onProgress: onProgress,
       );
@@ -120,11 +124,73 @@ class ListingRepositoryImpl implements ListingRepository {
 
   @override
   Future<Either<Failure, List<Listing>>> fetchBrokerListings(
-    String brokerUid,
+    String brokerUid, {
+    DateTime? lastCreatedAt,
+    String? lastDocId,
+    int limit = 20,
+  }) async {
+    try {
+      final list = await _ds.fetchBrokerListings(
+        brokerUid,
+        lastCreatedAt: lastCreatedAt,
+        lastDocId: lastDocId,
+        limit: limit,
+      );
+      return Right(list);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, bool>>> fetchLikedStatusBatch(
+    String uid,
+    List<String> listingIds,
   ) async {
     try {
-      final list = await _ds.fetchBrokerListings(brokerUid);
-      return Right(list);
+      final map = await _ds.fetchLikedStatusBatch(uid, listingIds);
+      return Right(map);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, bool>>> fetchInquiredStatusBatch(
+    String uid,
+    List<String> listingIds,
+  ) async {
+    try {
+      final map = await _ds.fetchInquiredStatusBatch(uid, listingIds);
+      return Right(map);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> updateListing({
+    required String listingId,
+    String? title,
+    double? price,
+    String? brokerageAmount,
+    String? description,
+  }) async {
+    try {
+      await _ds.updateListing(
+        listingId: listingId,
+        title: title,
+        price: price,
+        brokerageAmount: brokerageAmount,
+        description: description,
+      );
+      return const Right(unit);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
@@ -177,6 +243,35 @@ class ListingRepositoryImpl implements ListingRepository {
   }
 
   @override
+  Future<Either<Failure, List<String>>> fetchInquiredListingIds(
+    String uid,
+  ) async {
+    try {
+      final ids = await _ds.fetchInquiredListingIds(uid);
+      return Right(ids);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> recordInquiry({
+    required String listingId,
+    required String uid,
+  }) async {
+    try {
+      await _ds.recordInquiry(listingId: listingId, uid: uid);
+      return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, Unit>> incrementView({
     required String listingId,
     required String uid,
@@ -184,6 +279,76 @@ class ListingRepositoryImpl implements ListingRepository {
     try {
       await _ds.incrementView(listingId: listingId, uid: uid);
       return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteListing({
+    required String listingId,
+  }) async {
+    try {
+      await _ds.deleteListing(listingId: listingId);
+      return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> updateListingFull({
+    required String listingId,
+    required ListingCategory category,
+    required String city,
+    required String location,
+    required double area,
+    required AreaUnit areaUnit,
+    required double price,
+    required ListingVisibility visibility,
+    String? title,
+    PropertyType? propertyType,
+    double? originalPrice,
+    String? brokerageAmount,
+    String? instagramUrl,
+    String? description,
+    File? newHeroImageFile,
+    List<File> newAdditionalImageFiles = const [],
+    List<String> keptAdditionalImageUrls = const [],
+    File? newPdfFile,
+    String? existingPdfUrl,
+    void Function(double)? onProgress,
+  }) async {
+    try {
+      await _ds.updateListingFull(
+        listingId: listingId,
+        category: category,
+        city: city,
+        location: location,
+        area: area,
+        areaUnit: areaUnit,
+        price: price,
+        visibility: visibility,
+        title: title,
+        propertyType: propertyType,
+        originalPrice: originalPrice,
+        brokerageAmount: brokerageAmount,
+        instagramUrl: instagramUrl,
+        description: description,
+        newHeroImageFile: newHeroImageFile,
+        newAdditionalImageFiles: newAdditionalImageFiles,
+        keptAdditionalImageUrls: keptAdditionalImageUrls,
+        newPdfFile: newPdfFile,
+        existingPdfUrl: existingPdfUrl,
+        onProgress: onProgress,
+      );
+      return const Right(unit);
+    } on StorageException catch (e) {
+      return Left(StorageFailure(e.message));
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

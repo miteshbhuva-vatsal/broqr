@@ -8,7 +8,6 @@ import 'package:cpapp/features/crm/domain/entities/lead.dart';
 import 'package:cpapp/features/crm/presentation/providers/crm_providers.dart';
 import 'package:cpapp/features/listing/domain/entities/listing.dart';
 
-/// Bottom sheet for creating a new lead, optionally pre-filled from a [Listing].
 class AddLeadSheet extends ConsumerStatefulWidget {
   const AddLeadSheet({super.key, this.fromListing});
 
@@ -23,6 +22,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _valueCtrl = TextEditingController();
+  final _remarksCtrl = TextEditingController();
 
   LeadStage _stage = LeadStage.newLead;
   LeadPriority _priority = LeadPriority.medium;
@@ -33,8 +33,7 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
   void initState() {
     super.initState();
     if (widget.fromListing != null) {
-      final l = widget.fromListing!;
-      _valueCtrl.text = l.price.toStringAsFixed(0);
+      _valueCtrl.text = widget.fromListing!.price.toStringAsFixed(0);
     }
   }
 
@@ -43,27 +42,34 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _valueCtrl.dispose();
+    _remarksCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isSaving = true; _saveError = null; });
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
 
     final listing = widget.fromListing;
     final success = await ref.read(crmProvider.notifier).createLead(
           clientName: _nameCtrl.text.trim(),
           stage: _stage,
           priority: _priority,
-          clientPhone: _phoneCtrl.text.trim().isEmpty
-              ? null
-              : _phoneCtrl.text.trim(),
+          clientPhone:
+              _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
           estimatedValue: double.tryParse(
             _valueCtrl.text.replaceAll(',', ''),
           ),
           linkedListingId: listing?.id,
           linkedListingCity: listing?.city,
           linkedListingPrice: listing?.priceLabel,
+          linkedListingImageUrl: listing?.heroImageUrl,
+          remarks: _remarksCtrl.text.trim().isEmpty
+              ? null
+              : _remarksCtrl.text.trim(),
         );
 
     if (!mounted) return;
@@ -80,7 +86,8 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
       );
     } else {
       final err = ref.read(crmProvider).error;
-      setState(() => _saveError = err ?? 'Failed to save lead. Please try again.');
+      setState(
+          () => _saveError = err ?? 'Failed to save lead. Please try again.',);
     }
   }
 
@@ -95,65 +102,95 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.navyMid : AppColors.white,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle
+                // Handle + header
                 Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 4),
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
-                Text(
-                  AppLocalizations.of(context).addLead,
-                  style: AppTypography.titleMedium.copyWith(
-                    color: isDark ? AppColors.white : AppColors.navyDark,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+
+                        Icons.person_add_rounded,
+                        color: AppColors.gold,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      AppLocalizations.of(context).addLead,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: isDark ? AppColors.white : AppColors.navyDark,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      color: AppColors.textSecondary,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
 
                 // Linked listing banner
                 if (widget.fromListing != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 8,
+                      vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.gold.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.gold.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: AppColors.gold.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.link_rounded,
-                            size: 16, color: AppColors.gold,),
+                        const Icon(
+                          Icons.link_rounded,
+                          size: 15,
+                          color: AppColors.gold,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'From listing: '
                             '${widget.fromListing!.location}, '
                             '${widget.fromListing!.city} · '
                             '${widget.fromListing!.priceLabel}',
                             style: AppTypography.bodySmall.copyWith(
                               color: AppColors.gold,
+                              fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -166,103 +203,140 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
 
                 const SizedBox(height: 20),
 
+                // ── Section: Contact ─────────────────────────────────────
+                _SectionLabel('Contact', isDark: isDark),
+                const SizedBox(height: 10),
+
                 // Client name
-                _Label(AppLocalizations.of(context).clientName, required: true),
-                const SizedBox(height: 6),
                 TextFormField(
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   style: TextStyle(
-                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                    color:
+                        isDark ? AppColors.textOnDark : AppColors.textPrimary,
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? AppLocalizations.of(context).nameRequired
                       : null,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).clientName,
                     hintText: 'e.g. Rahul Sharma',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
                 // Phone
-                _Label(AppLocalizations.of(context).phoneLabel, required: false),
-                const SizedBox(height: 6),
                 TextFormField(
                   controller: _phoneCtrl,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
                   style: TextStyle(
-                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                    color:
+                        isDark ? AppColors.textOnDark : AppColors.textPrimary,
                   ),
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
                   ],
                   decoration: const InputDecoration(
+                    labelText: 'Phone',
                     hintText: '9876543210',
                     prefixIcon: Icon(Icons.phone_outlined),
                     prefixText: '+91 ',
                   ),
                 ),
-                const SizedBox(height: 14),
+
+                const SizedBox(height: 20),
+
+                // ── Section: Interest ────────────────────────────────────
+                _SectionLabel('Interest', isDark: isDark),
+                const SizedBox(height: 10),
+
+                // Remarks
+                TextFormField(
+                  controller: _remarksCtrl,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 5,
+                  minLines: 3,
+                  textInputAction: TextInputAction.newline,
+                  style: TextStyle(
+                    color:
+                        isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Remarks',
+                    hintText: 'e.g. Looking for 3BHK under ₹75L, prefers south-facing',
+                    prefixIcon: Icon(Icons.format_quote_rounded),
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // Estimated value
-                _Label(AppLocalizations.of(context).estimatedValue, required: false),
-                const SizedBox(height: 6),
                 TextFormField(
                   controller: _valueCtrl,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
                   style: TextStyle(
-                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                    color:
+                        isDark ? AppColors.textOnDark : AppColors.textPrimary,
                   ),
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(
+                    labelText: 'Budget / Est. Value',
                     hintText: '7500000',
                     prefixText: '₹ ',
                     prefixIcon: Icon(Icons.currency_rupee_rounded),
                   ),
                 ),
+
                 const SizedBox(height: 20),
 
+                // ── Section: Pipeline ────────────────────────────────────
+                _SectionLabel('Pipeline', isDark: isDark),
+                const SizedBox(height: 10),
+
                 // Stage selector
-                _Label(AppLocalizations.of(context).stageLabel, required: true),
-                const SizedBox(height: 8),
                 _StageSelector(
+                  label: AppLocalizations.of(context).stageLabel,
                   selected: _stage,
                   onSelect: (s) => setState(() => _stage = s),
                   isDark: isDark,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // Priority selector
-                _Label(AppLocalizations.of(context).priorityLabel, required: true),
-                const SizedBox(height: 8),
                 _PrioritySelector(
+                  label: AppLocalizations.of(context).priorityLabel,
                   selected: _priority,
                   onSelect: (p) => setState(() => _priority = p),
                   isDark: isDark,
                 ),
-                const SizedBox(height: 28),
+
+                const SizedBox(height: 24),
 
                 if (_saveError != null) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10,),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.3),),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
+                        const Icon(Icons.error_outline_rounded,
+                            color: AppColors.error, size: 16,),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _saveError!,
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.error),
                           ),
                         ),
                       ],
@@ -281,8 +355,9 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                       backgroundColor: AppColors.gold,
                       foregroundColor: AppColors.navyDark,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
+                      elevation: 0,
                     ),
                     child: _isSaving
                         ? const SizedBox(
@@ -293,12 +368,19 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
                               color: AppColors.navyDark,
                             ),
                           )
-                        : Text(
-                            AppLocalizations.of(context).addToPipelineBtn,
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.navyDark,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.add_rounded, size: 20),
+                              const SizedBox(width: 6),
+                              Text(
+                                AppLocalizations.of(context).addToPipelineBtn,
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.navyDark,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
                   ),
                 ),
@@ -313,30 +395,31 @@ class _AddLeadSheetState extends ConsumerState<AddLeadSheet> {
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
 
-class _Label extends StatelessWidget {
-  const _Label(this.text, {required this.required});
-  final String text;
-  final bool required;
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label, {required this.isDark});
+  final String label;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Text(
-          text,
-          style: AppTypography.labelMedium.copyWith(
-            color: AppColors.textSecondary,
+          label.toUpperCase(),
+          style: AppTypography.labelSmall.copyWith(
+            color: AppColors.textHint,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            fontSize: 11,
           ),
         ),
-        if (required)
-          const Text(
-            ' *',
-            style: TextStyle(
-              color: AppColors.error,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: (isDark ? AppColors.borderDark : AppColors.border),
           ),
+        ),
       ],
     );
   }
@@ -344,122 +427,151 @@ class _Label extends StatelessWidget {
 
 class _StageSelector extends StatelessWidget {
   const _StageSelector({
+    required this.label,
     required this.selected,
     required this.onSelect,
     required this.isDark,
   });
 
+  final String label;
   final LeadStage selected;
   final ValueChanged<LeadStage> onSelect;
   final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: LeadStage.values.map((s) {
-        final isSelected = selected == s;
-        return GestureDetector(
-          onTap: () => onSelect(s),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? s.color.withValues(alpha: 0.15)
-                  : (isDark
-                      ? AppColors.surfaceDark
-                      : AppColors.surfaceLight),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected ? s.color : AppColors.border,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Text(
-              s.label,
-              style: AppTypography.labelSmall.copyWith(
-                color: isSelected ? s.color : AppColors.textSecondary,
-                fontWeight:
-                    isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: LeadStage.values.map((s) {
+            final isSelected = selected == s;
+            return GestureDetector(
+              onTap: () => onSelect(s),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? s.color.withValues(alpha: 0.15)
+                      : (isDark ? AppColors.surfaceDark : AppColors.offWhite),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: isSelected ? s.color : AppColors.border,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Text(
+                  s.label,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isSelected ? s.color : AppColors.textSecondary,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
 
 class _PrioritySelector extends StatelessWidget {
   const _PrioritySelector({
+    required this.label,
     required this.selected,
     required this.onSelect,
     required this.isDark,
   });
 
+  final String label;
   final LeadPriority selected;
   final ValueChanged<LeadPriority> onSelect;
   final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: LeadPriority.values.map((p) {
-        final isSelected = selected == p;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => onSelect(p),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: EdgeInsets.only(
-                right: p != LeadPriority.high ? 8 : 0,
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? p.color.withValues(alpha: 0.15)
-                    : (isDark
-                        ? AppColors.surfaceDark
-                        : AppColors.surfaceLight),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected ? p.color : AppColors.border,
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: p.color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      p.label,
-                      style: AppTypography.labelSmall.copyWith(
-                        color:
-                            isSelected ? p.color : AppColors.textSecondary,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: LeadPriority.values.map((p) {
+            final isSelected = selected == p;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onSelect(p),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  margin: EdgeInsets.only(
+                    right: p != LeadPriority.high ? 8 : 0,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? p.color.withValues(alpha: 0.15)
+                        : (isDark
+                            ? AppColors.surfaceDark
+                            : AppColors.offWhite),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? p.color : AppColors.border,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: p.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          p.label,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: isSelected
+                                ? p.color
+                                : AppColors.textSecondary,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

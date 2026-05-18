@@ -25,8 +25,7 @@ final crmRemoteDataSourceProvider =
 typedef CrmRemoteDataSourceRef = AutoDisposeProviderRef<CrmRemoteDataSource>;
 
 @ProviderFor(crmRepository)
-final crmRepositoryProvider =
-    AutoDisposeProvider<CrmRepository>.internal(
+final crmRepositoryProvider = AutoDisposeProvider<CrmRepository>.internal(
   crmRepository,
   name: r'crmRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -39,13 +38,11 @@ final crmRepositoryProvider =
 typedef CrmRepositoryRef = AutoDisposeProviderRef<CrmRepository>;
 
 @ProviderFor(Crm)
-final crmProvider =
-    AutoDisposeNotifierProvider<Crm, CrmState>.internal(
+final crmProvider = AutoDisposeNotifierProvider<Crm, CrmState>.internal(
   Crm.new,
   name: r'crmProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$crmHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$crmHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

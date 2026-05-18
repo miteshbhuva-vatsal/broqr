@@ -1,431 +1,317 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cpapp/core/constants/app_constants.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
-import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
-import 'package:cpapp/features/news/domain/entities/news_article.dart';
-import 'package:cpapp/features/news/presentation/providers/news_providers.dart';
-import 'package:cpapp/features/news/presentation/widgets/news_card.dart';
 
-// ── Filter categories ──────────────────────────────────────────────────────────
+// ── Provider (package-visible so NewsFeedBody can reuse it) ──────────────────
 
-enum _Filter {
-  all('All'),
-  property('Property'),
-  realestate('Real Estate'),
-  govt('Govt & RERA'),
-  vernacular('हिंदी');
-
-  const _Filter(this.label);
-  final String label;
-}
-
-bool _matches(NewsArticle a, _Filter f) {
-  if (f == _Filter.all) return true;
-  final haystack =
-      '${a.title} ${a.description ?? ''} ${a.sourceName}'.toLowerCase();
-  return switch (f) {
-    _Filter.property => haystack.contains('flat') ||
-        haystack.contains('apartment') ||
-        haystack.contains('villa') ||
-        haystack.contains('plot') ||
-        haystack.contains('bhk') ||
-        haystack.contains('house') ||
-        haystack.contains('property'),
-    _Filter.realestate => haystack.contains('real estate') ||
-        haystack.contains('realty') ||
-        haystack.contains('developer') ||
-        haystack.contains('builder') ||
-        haystack.contains('construction'),
-    _Filter.govt => haystack.contains('rera') ||
-        haystack.contains('government') ||
-        haystack.contains('govt') ||
-        haystack.contains('policy') ||
-        haystack.contains('regulation') ||
-        haystack.contains('notification') ||
-        haystack.contains('ministry'),
-    _Filter.vernacular => haystack.contains('संपत्ति') ||
-        haystack.contains('रियल') ||
-        haystack.contains('आवास') ||
-        haystack.contains('मकान') ||
-        a.sourceName.toLowerCase().contains('ujala') ||
-        a.sourceName.toLowerCase().contains('hindi') ||
-        a.sourceName.toLowerCase().contains('bhaskar'),
-    _Filter.all => true,
-  };
-}
+// ignore: library_private_types_in_public_api
+final newsProvider = FutureProvider<List<_NewsItem>>((ref) async {
+  final dio = Dio(BaseOptions(
+    baseUrl: AppConstants.apiBaseUrl,
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 15),
+  ),);
+  final res = await dio.get<dynamic>('/api/news');
+  final data = res.data;
+  if (data is! Map) return [];
+  final results = data['results'] as List? ?? [];
+  return results.map((e) {
+    final m = e as Map<String, dynamic>;
+    return _NewsItem(
+      title: m['title'] as String? ?? '',
+      source: m['source']?['name'] as String? ?? '',
+      date: m['date'] as String? ?? '',
+      imageUrl: m['thumbnail'] as String?,
+      link: m['link'] as String? ?? '',
+      snippet: m['snippet'] as String? ?? '',
+    );
+  }).where((n) => n.title.isNotEmpty).toList();
+});
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-class NewsScreen extends ConsumerStatefulWidget {
+class NewsScreen extends ConsumerWidget {
   const NewsScreen({super.key});
 
   @override
-  ConsumerState<NewsScreen> createState() => _NewsScreenState();
-}
-
-class _NewsScreenState extends ConsumerState<NewsScreen> {
-  _Filter _activeFilter = _Filter.all;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final newsState = ref.watch(newsProvider);
-    final city = ref.watch(authStateChangesProvider).valueOrNull?.city;
-
-    final filtered = newsState.articles
-        .where((a) => _matches(a, _activeFilter))
-        .toList();
+    final newsAsync = ref.watch(newsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.navyDark : const Color(0xFFF2F4F7),
-      body: NestedScrollView(
-        headerSliverBuilder: (_, __) => [
-          _NewsAppBar(city: city, isDark: isDark),
-        ],
-        body: RefreshIndicator(
-          onRefresh: () => ref.read(newsProvider.notifier).refresh(),
-          color: AppColors.gold,
-          backgroundColor: isDark ? AppColors.navyMid : AppColors.white,
-          child: CustomScrollView(
-            slivers: [
-              // ── Filter chips ────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: _FilterRow(
-                  active: _activeFilter,
-                  onSelect: (f) => setState(() => _activeFilter = f),
-                  isDark: isDark,
+      backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
+      body: CustomScrollView(
+        slivers: [
+          // ── App bar ──────────────────────────────────────────────────
+          SliverAppBar(
+            floating: true,
+            snap: true,
+            backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
+            surfaceTintColor: Colors.transparent,
+            title: Row(
+              children: [
+                const Icon(Icons.newspaper_rounded,
+                    color: AppColors.gold, size: 22,),
+                const SizedBox(width: 8),
+                Text(
+                  'Real Estate News',
+                  style: AppTypography.titleSmall.copyWith(
+                    color: isDark ? AppColors.white : AppColors.navyDark,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                color: AppColors.textSecondary,
+                onPressed: () => ref.invalidate(newsProvider),
               ),
-
-              // ── Last updated timestamp ──────────────────────────────────
-              if (newsState.lastFetched != null)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                    child: Text(
-                      'Updated ${_ago(newsState.lastFetched!)}',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.textHint,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Loading shimmer ─────────────────────────────────────────
-              if (newsState.isLoading && newsState.articles.isEmpty)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, __) => _ShimmerCard(isDark: isDark),
-                    childCount: 5,
-                  ),
-                )
-
-              // ── Error state ─────────────────────────────────────────────
-              else if (newsState.error != null && newsState.articles.isEmpty)
-                SliverFillRemaining(
-                  child: _ErrorState(
-                    onRetry: () => ref.read(newsProvider.notifier).refresh(),
-                    isDark: isDark,
-                  ),
-                )
-
-              // ── Empty after filter ──────────────────────────────────────
-              else if (filtered.isEmpty && !newsState.isLoading)
-                SliverFillRemaining(
-                  child: _EmptyState(
-                    filter: _activeFilter,
-                    isDark: isDark,
-                    onClear: () => setState(() => _activeFilter = _Filter.all),
-                  ),
-                )
-
-              // ── Article list ─────────────────────────────────────────────
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (_, i) => NewsCard(article: filtered[i]),
-                      childCount: filtered.length,
-                    ),
-                  ),
-                ),
             ],
           ),
-        ),
-      ),
-    );
-  }
 
-  String _ago(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
-  }
-}
-
-// ── App bar ───────────────────────────────────────────────────────────────────
-
-class _NewsAppBar extends StatelessWidget {
-  const _NewsAppBar({required this.city, required this.isDark});
-  final String? city;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverAppBar(
-      pinned: true,
-      floating: true,
-      snap: true,
-      expandedHeight: 88,
-      backgroundColor: AppColors.navyDark,
-      foregroundColor: AppColors.white,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'News',
-              style: AppTypography.titleLarge.copyWith(
-                color: AppColors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
+          // ── Content ──────────────────────────────────────────────────
+          newsAsync.when(
+            loading: () => const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.gold),
               ),
             ),
-            const SizedBox(width: 8),
-            if (city != null && city!.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(bottom: 2),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.5),
-                    width: 0.8,
-                  ),
-                ),
-                child: Row(
+            error: (_, __) => SliverFillRemaining(
+              child: Center(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.location_on_rounded,
-                      color: AppColors.gold,
-                      size: 10,
-                    ),
-                    const SizedBox(width: 3),
+                    const Icon(Icons.wifi_off_rounded,
+                        color: AppColors.textSecondary, size: 48,),
+                    const SizedBox(height: 12),
                     Text(
-                      city!,
-                      style: const TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                      'Couldn\'t load news',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => ref.invalidate(newsProvider),
+                      child: const Text('Try Again'),
                     ),
                   ],
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Filter chips row ──────────────────────────────────────────────────────────
-
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({
-    required this.active,
-    required this.onSelect,
-    required this.isDark,
-  });
-
-  final _Filter active;
-  final ValueChanged<_Filter> onSelect;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        children: _Filter.values.map((f) {
-          final isActive = f == active;
-          return GestureDetector(
-            onTap: () => onSelect(f),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.only(right: 8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.gold
-                    : (isDark
-                        ? AppColors.surfaceDark
-                        : AppColors.white),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive
-                      ? AppColors.gold
-                      : (isDark ? AppColors.borderDark : AppColors.border),
-                ),
-                boxShadow: isActive
-                    ? [
-                        BoxShadow(
-                          color: AppColors.gold.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+            ),
+            data: (items) => items.isEmpty
+                ? SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        'No news available right now.',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
                         ),
-                      ]
-                    : null,
-              ),
-              child: Text(
-                f.label,
-                style: TextStyle(
-                  color: isActive
-                      ? AppColors.navyDark
-                      : (isDark
-                          ? AppColors.textOnDarkSecondary
-                          : AppColors.textSecondary),
-                  fontSize: 12,
-                  fontWeight:
-                      isActive ? FontWeight.w800 : FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
+                      ),
+                    ),
+                  )
+                : SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (ctx, i) => _NewsCard(
+                          item: items[i],
+                          isDark: isDark,
+                        ),
+                        childCount: items.length,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Shimmer loading card ──────────────────────────────────────────────────────
+// ── Embeddable feed body (used by AskScreen News tab) ────────────────────────
 
-class _ShimmerCard extends StatelessWidget {
-  const _ShimmerCard({required this.isDark});
-  final bool isDark;
+class NewsFeedBody extends ConsumerWidget {
+  const NewsFeedBody({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final base = isDark ? AppColors.navyMid : AppColors.border;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      height: (MediaQuery.of(context).size.width - 28) * 9 / 16,
-      decoration: BoxDecoration(
-        color: base,
-        borderRadius: BorderRadius.circular(16),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final newsAsync = ref.watch(newsProvider);
+
+    return newsAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
       ),
-    );
-  }
-}
-
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.filter,
-    required this.isDark,
-    required this.onClear,
-  });
-  final _Filter filter;
-  final bool isDark;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      error: (_, __) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.newspaper_outlined,
-                size: 48, color: AppColors.gold,),
+            const Icon(Icons.wifi_off_rounded,
+                color: AppColors.textSecondary, size: 48,),
+            const SizedBox(height: 12),
+            Text(
+              'Couldn\'t load news',
+              style: AppTypography.bodyMedium
+                  .copyWith(color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 16),
-            Text(
-              'No ${filter.label} news this week',
-              style: AppTypography.titleSmall.copyWith(
-                color: isDark ? AppColors.white : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try a different category or pull down to refresh.',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
             TextButton(
-              onPressed: onClear,
-              style: TextButton.styleFrom(foregroundColor: AppColors.gold),
-              child: const Text('Show All'),
+              onPressed: () => ref.invalidate(newsProvider),
+              child: const Text('Try Again'),
             ),
           ],
         ),
+      ),
+      data: (items) => items.isEmpty
+          ? Center(
+              child: Text(
+                'No news available right now.',
+                style: AppTypography.bodyMedium
+                    .copyWith(color: AppColors.textSecondary),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: items.length,
+              itemBuilder: (ctx, i) =>
+                  _NewsCard(item: items[i], isDark: isDark),
+            ),
+    );
+  }
+}
+
+// ── News card ─────────────────────────────────────────────────────────────────
+
+class _NewsCard extends StatelessWidget {
+  const _NewsCard({required this.item, required this.isDark});
+  final _NewsItem item;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.navyMid : AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Thumbnail ─────────────────────────────────────────────
+          if (item.imageUrl != null)
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(15),
+                bottomLeft: Radius.circular(15),
+              ),
+              child: Image.network(
+                item.imageUrl!,
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 100,
+                  height: 100,
+                  color: isDark
+                      ? AppColors.surfaceDark
+                      : AppColors.surfaceLight,
+                  child: const Icon(Icons.article_outlined,
+                      color: AppColors.textSecondary,),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceDark
+                    : AppColors.surfaceLight,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15),
+                  bottomLeft: Radius.circular(15),
+                ),
+              ),
+              child: const Icon(Icons.article_outlined,
+                  color: AppColors.textSecondary,),
+            ),
+
+          // ── Text content ──────────────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.source.isNotEmpty) ...[
+                    Text(
+                      item.source.toUpperCase(),
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.gold,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 9,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  Text(
+                    item.title,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isDark ? AppColors.white : AppColors.navyDark,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (item.date.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      item.date,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Error state ───────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────────
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.onRetry, required this.isDark});
-  final VoidCallback onRetry;
-  final bool isDark;
+class _NewsItem {
+  const _NewsItem({
+    required this.title,
+    required this.source,
+    required this.date,
+    required this.link,
+    required this.snippet,
+    this.imageUrl,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.wifi_off_rounded,
-              size: 48,
-              color: isDark
-                  ? AppColors.textOnDarkSecondary
-                  : AppColors.textSecondary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Could not load news.\nCheck your connection.',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.gold,
-                foregroundColor: AppColors.navyDark,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  final String title;
+  final String source;
+  final String date;
+  final String link;
+  final String snippet;
+  final String? imageUrl;
 }

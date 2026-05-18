@@ -96,7 +96,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       _showSnack(l.pleaseUploadHeroPhoto);
       return;
     }
-    final posterBytes = await _capturePoster();
+    // Only capture poster when a new hero image file was picked
+    final posterBytes = state.heroImage != null ? await _capturePoster() : null;
     await ref.read(addListingProvider.notifier).publish(
           posterPngBytes: posterBytes,
         );
@@ -139,6 +140,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     });
 
     final l = AppLocalizations.of(context);
+    final isEditMode = formState.isEditMode;
     final steps = [l.stepCategory, l.stepDetails, l.stepPoster];
     final isLastStep = formState.step == 2;
 
@@ -164,7 +166,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               onPressed: _back,
             ),
             title: Text(
-              l.newListing,
+              isEditMode ? 'Edit Listing' : l.newListing,
               style: AppTypography.titleMedium.copyWith(
                 color: isDark ? AppColors.white : AppColors.navyDark,
               ),
@@ -208,6 +210,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                         price: formState.price,
                         originalPrice: formState.originalPrice,
                         brokerage: formState.brokerage,
+                        instagramUrl: formState.instagramUrl,
+                        pdfFile: formState.pdfFile,
                         description: formState.description,
                         onPropertyTypeChanged: ref
                             .read(addListingProvider.notifier)
@@ -237,6 +241,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                         onBrokerageChanged: ref
                             .read(addListingProvider.notifier)
                             .updateBrokerage,
+                        onInstagramUrlChanged: ref
+                            .read(addListingProvider.notifier)
+                            .updateInstagramUrl,
+                        onPdfFileChanged: ref
+                            .read(addListingProvider.notifier)
+                            .setPdfFile,
+                        onPdfFileCleared: ref
+                            .read(addListingProvider.notifier)
+                            .clearPdfFile,
                         onDescriptionChanged: ref
                             .read(addListingProvider.notifier)
                             .updateDescription,
@@ -268,6 +281,12 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                         onRemoveAdditional: ref
                             .read(addListingProvider.notifier)
                             .removeAdditionalImage,
+                        existingHeroImageUrl: formState.existingHeroImageUrl,
+                        existingAdditionalImageUrls:
+                            formState.existingAdditionalImageUrls,
+                        onRemoveExistingAdditional: ref
+                            .read(addListingProvider.notifier)
+                            .removeExistingAdditionalImage,
                       ),
                     ),
                   ],
@@ -290,7 +309,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 child: SafeArea(
                   top: false,
                   child: AppButton(
-                    label: isLastStep ? l.publishListing : l.nextArrow,
+                    label: isLastStep
+                        ? (isEditMode ? 'Update Listing' : l.publishListing)
+                        : l.nextArrow,
                     onPressed: formState.isSubmitting
                         ? null
                         : (isLastStep ? _publish : _next),

@@ -22,13 +22,14 @@ abstract final class Routes {
   // ── CRM ───────────────────────────────────────────────────────────────────
   static const String crm = '/app/crm';
   static const String leadDetail = '/app/crm/lead/:leadId';
+  static const String subscriptionPlan = '/app/subscription-plan';
 
-  // ── News ──────────────────────────────────────────────────────────────────
-  static const String news = '/app/news';
+  // ── Ask (community posts) ─────────────────────────────────────────────────
+  static const String ask = '/app/ask';
 
-  // ── Network ───────────────────────────────────────────────────────────────
-  static const String network = '/app/network';
-  static const String brokerProfile = '/app/network/broker/:brokerId';
+  // ── Realtors ──────────────────────────────────────────────────────────────
+  static const String realtors = '/app/realtors';
+  static const String realtorProfile = '/app/realtors/realtor/:realtorId';
 
   // ── Chat ──────────────────────────────────────────────────────────────────
   static const String chat = '/app/chat';
@@ -41,6 +42,7 @@ abstract final class Routes {
   static const String notifications = '/app/notifications';
 
   // ── Profile ───────────────────────────────────────────────────────────────
+  static const String profileHub = '/app/me';
   static const String profile = '/app/profile';
   static const String editProfile = '/app/profile/edit';
   static const String myListings = '/app/profile/listings';
@@ -48,8 +50,16 @@ abstract final class Routes {
   // ── Search ────────────────────────────────────────────────────────────────
   static const String search = '/app/search';
 
+  // ── Organisation ─────────────────────────────────────────────────────────
+  static const String organisation = '/app/organisation';
+
   // ── Settings ──────────────────────────────────────────────────────────────
   static const String language = '/app/settings/language';
+
+  // ── Persona & onboarding (post-login, pre-profile-complete) ──────────────
+  static const String personaSelection  = '/persona-selection';
+  static const String buyerOnboarding   = '/onboarding/buyer';
+  static const String sellerOnboarding  = '/onboarding/seller';
 
   // ── Dev (debug builds only) ───────────────────────────────────────────────
   static const String devSeed = '/dev/seed';

@@ -16,7 +16,7 @@ class ChatConversationModel extends ChatConversation {
   factory ChatConversationModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final d = doc.data()!;
+    final d = doc.data() ?? {};
     return ChatConversationModel(
       id: doc.id,
       participants: List<String>.from(d['participants'] as List? ?? []),

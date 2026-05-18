@@ -24,6 +24,8 @@ abstract interface class ListingRepository {
     PropertyType? propertyType,
     String? brokerageAmount,
     String? posterRole,
+    String? instagramUrl,
+    File? pdfFile,
     ListingVisibility visibility = ListingVisibility.all,
     double? originalPrice,
     void Function(double)? onProgress,
@@ -45,7 +47,31 @@ abstract interface class ListingRepository {
     String? city,
   });
 
-  Future<Either<Failure, List<Listing>>> fetchBrokerListings(String brokerUid);
+  Future<Either<Failure, List<Listing>>> fetchBrokerListings(
+    String brokerUid, {
+    DateTime? lastCreatedAt,
+    String? lastDocId,
+    int limit = 20,
+  });
+
+  Future<Either<Failure, Map<String, bool>>> fetchLikedStatusBatch(
+    String uid,
+    List<String> listingIds,
+  );
+
+  Future<Either<Failure, Map<String, bool>>> fetchInquiredStatusBatch(
+    String uid,
+    List<String> listingIds,
+  );
+
+  /// Partial in-place edit of a listing the user owns. Null params are skipped.
+  Future<Either<Failure, Unit>> updateListing({
+    required String listingId,
+    String? title,
+    double? price,
+    String? brokerageAmount,
+    String? description,
+  });
 
   // ── Engagement ────────────────────────────────────────────────────────────
 
@@ -61,8 +87,40 @@ abstract interface class ListingRepository {
     required String uid,
   });
 
+  Future<Either<Failure, List<String>>> fetchInquiredListingIds(String uid);
+
+  Future<Either<Failure, Unit>> recordInquiry({
+    required String listingId,
+    required String uid,
+  });
+
   Future<Either<Failure, Unit>> incrementView({
     required String listingId,
     required String uid,
+  });
+
+  Future<Either<Failure, Unit>> deleteListing({required String listingId});
+
+  Future<Either<Failure, Unit>> updateListingFull({
+    required String listingId,
+    required ListingCategory category,
+    required String city,
+    required String location,
+    required double area,
+    required AreaUnit areaUnit,
+    required double price,
+    required ListingVisibility visibility,
+    String? title,
+    PropertyType? propertyType,
+    double? originalPrice,
+    String? brokerageAmount,
+    String? instagramUrl,
+    String? description,
+    File? newHeroImageFile,
+    List<File> newAdditionalImageFiles,
+    List<String> keptAdditionalImageUrls,
+    File? newPdfFile,
+    String? existingPdfUrl,
+    void Function(double)? onProgress,
   });
 }

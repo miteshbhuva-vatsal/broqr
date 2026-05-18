@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -26,6 +27,9 @@ class StepPosterCreator extends StatelessWidget {
     required this.onAdditionalImagesPicked,
     required this.onRemoveAdditional,
     required this.posterKey,
+    this.existingHeroImageUrl,
+    this.existingAdditionalImageUrls = const [],
+    this.onRemoveExistingAdditional,
   });
 
   final ListingCategory category;
@@ -40,6 +44,10 @@ class StepPosterCreator extends StatelessWidget {
   final ValueChanged<List<File>> onAdditionalImagesPicked;
   final ValueChanged<int> onRemoveAdditional;
   final GlobalKey posterKey;
+  // Edit mode
+  final String? existingHeroImageUrl;
+  final List<String> existingAdditionalImageUrls;
+  final ValueChanged<String>? onRemoveExistingAdditional;
 
   Future<void> _pickHero(BuildContext context) async {
     final source = await _sourceSheet(context);
@@ -61,8 +69,8 @@ class StepPosterCreator extends StatelessWidget {
 
     final picked = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 100,
-      maxWidth: 1920,
+      imageQuality: 85,
+      maxWidth: 1080,
     );
     if (picked == null) return;
     onHeroImagePicked(File(picked.path));
@@ -79,8 +87,8 @@ class StepPosterCreator extends StatelessWidget {
     }
 
     final picked = await ImagePicker().pickMultiImage(
-      imageQuality: 100,
-      maxWidth: 1920,
+      imageQuality: 85,
+      maxWidth: 1080,
       limit: remaining,
     );
     if (picked.isEmpty) return;
@@ -136,7 +144,7 @@ class StepPosterCreator extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l = AppLocalizations.of(context);
-    final remaining = _kMaxAdditional - additionalImages.length;
+    final remaining = _kMaxAdditional - additionalImages.length - existingAdditionalImageUrls.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,10 +176,10 @@ class StepPosterCreator extends StatelessWidget {
               color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: heroImage == null
+                color: (heroImage == null && existingHeroImageUrl == null)
                     ? AppColors.gold.withValues(alpha: 0.5)
                     : AppColors.border,
-                width: heroImage == null ? 2 : 1,
+                width: (heroImage == null && existingHeroImageUrl == null) ? 2 : 1,
               ),
             ),
             child: heroImage != null
@@ -182,47 +190,62 @@ class StepPosterCreator extends StatelessWidget {
                       children: [
                         Image.file(heroImage!, fit: BoxFit.cover),
                         Positioned(
-                          top: 8,
-                          right: 8,
-                          child: GestureDetector(
-                            onTap: () => _pickHero(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.navyDark.withValues(alpha: 0.7),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.edit_rounded,
-                                  color: AppColors.white, size: 16,),
-                            ),
-                          ),
+                          top: 8, right: 8,
+                          child: _EditOverlayButton(onTap: () => _pickHero(context)),
                         ),
                       ],
                     ),
                   )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.gold.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
+                : existingHeroImageUrl != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(13),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: existingHeroImageUrl!,
+                              fit: BoxFit.cover,
+                            ),
+                            Positioned(
+                              top: 8, right: 8,
+                              child: _EditOverlayButton(onTap: () => _pickHero(context)),
+                            ),
+                            Positioned(
+                              bottom: 8, left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.navyDark.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('Current photo',
+                                  style: TextStyle(color: Colors.white, fontSize: 10),),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Icon(Icons.add_photo_alternate_outlined,
-                            color: AppColors.gold, size: 26,),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 48, height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.add_photo_alternate_outlined,
+                                color: AppColors.gold, size: 26,),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(l.tapToUploadHeroPhoto,
+                              style: AppTypography.labelMedium.copyWith(
+                                color: AppColors.gold,
+                              ),),
+                          const SizedBox(height: 4),
+                          Text(l.jpgOrPng, style: AppTypography.bodySmall,),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(l.tapToUploadHeroPhoto,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: AppColors.gold,
-                          ),),
-                      const SizedBox(height: 4),
-                      Text(l.jpgOrPng,
-                          style: AppTypography.bodySmall,),
-                    ],
-                  ),
           ),
         ),
 
@@ -266,6 +289,43 @@ class StepPosterCreator extends StatelessWidget {
                     ),
                   ),
                 ),
+              // Existing images (from Firestore) — shown in edit mode
+              ...existingAdditionalImageUrls.map((url) => Stack(
+                children: [
+                  Container(
+                    width: 84,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        width: 84,
+                        height: 88,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4, right: 14,
+                    child: GestureDetector(
+                      onTap: () => onRemoveExistingAdditional?.call(url),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close_rounded,
+                            color: AppColors.white, size: 12,),
+                      ),
+                    ),
+                  ),
+                ],
+              ),),
+              // New files picked this session
               ...List.generate(additionalImages.length, (i) {
                 return Stack(
                   children: [
@@ -281,8 +341,7 @@ class StepPosterCreator extends StatelessWidget {
                       ),
                     ),
                     Positioned(
-                      top: 4,
-                      right: 14,
+                      top: 4, right: 14,
                       child: GestureDetector(
                         onTap: () => onRemoveAdditional(i),
                         child: Container(
@@ -333,6 +392,26 @@ class StepPosterCreator extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _EditOverlayButton extends StatelessWidget {
+  const _EditOverlayButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: AppColors.navyDark.withValues(alpha: 0.7),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.edit_rounded, color: AppColors.white, size: 16),
+      ),
     );
   }
 }

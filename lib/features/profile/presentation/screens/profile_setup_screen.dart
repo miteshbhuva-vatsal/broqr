@@ -1,25 +1,26 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cpapp/core/constants/app_constants.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
-import 'package:cpapp/core/router/app_router.dart';
+import 'package:cpapp/core/providers/navigation_overrides.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
-import 'package:cpapp/shared/widgets/app_guide.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
-import 'package:cpapp/features/auth/domain/entities/user_role.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
+import 'package:cpapp/features/organisation/presentation/providers/org_providers.dart';
 import 'package:cpapp/features/profile/presentation/providers/profile_providers.dart';
 import 'package:cpapp/features/profile/presentation/widgets/city_picker_sheet.dart';
-import 'package:cpapp/features/profile/presentation/widgets/profile_photo_picker.dart';
+import 'package:cpapp/features/profile/presentation/widgets/profile_photo_picker.dart' hide AppConstants;
 import 'package:cpapp/shared/widgets/app_button.dart';
 import 'package:cpapp/shared/widgets/app_text_field.dart';
+import 'package:cpapp/shared/widgets/locality_autocomplete.dart';
 import 'package:cpapp/shared/widgets/loading_overlay.dart';
 
-/// Broker profile setup — shown once after first social login.
-/// Collects: display name, mobile, city, RERA (optional), profile photo.
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
 
@@ -29,23 +30,95 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
+
   late final TextEditingController _nameCtrl;
   late final TextEditingController _mobileCtrl;
   late final TextEditingController _reraCtrl;
-
+  late final TextEditingController _companyCtrl;
+  List<String> _workingAreas = [];
   String? _selectedCity;
-  UserRole? _selectedRole;
   File? _photoFile;
+
   bool _submitted = false;
+  bool _mobileVerified = false;
+
+  String? _inviteOrgId;
+  String? _inviteOrgName;
+
+  static String _mobileFromAuthPhone() {
+    final phone = FirebaseAuth.instance.currentUser?.phoneNumber ?? '';
+    if (phone.startsWith('+91') && phone.length == 13) return phone.substring(3);
+    return '';
+  }
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill name from social login profile
-    final user = ref.read(authStateChangesProvider).valueOrNull;
-    _nameCtrl = TextEditingController(text: user?.name ?? '');
-    _mobileCtrl = TextEditingController(text: user?.mobile ?? '');
-    _reraCtrl = TextEditingController();
+    final user       = ref.read(authStateChangesProvider).valueOrNull;
+    final authMobile = _mobileFromAuthPhone();
+    final mobile     = user?.mobile?.isNotEmpty == true
+        ? user!.mobile!
+        : authMobile;
+    _mobileVerified  = mobile.isNotEmpty &&
+        (authMobile == mobile || (user?.isPhoneVerified ?? false));
+    _nameCtrl    = TextEditingController(text: user?.name ?? '');
+    _mobileCtrl  = TextEditingController(text: mobile);
+    _reraCtrl    = TextEditingController();
+    _companyCtrl = TextEditingController(text: user?.companyName ?? '');
+
+    // Router populated pendingOrgInviteProvider during the auth flow — use it
+    // directly so we avoid a redundant Firestore call and the invite banner
+    // appears immediately without waiting for an async round-trip.
+    final pendingInvite = ref.read(pendingOrgInviteProvider);
+    if (pendingInvite != null) {
+      _applyInviteData(pendingInvite);
+    } else {
+      final mobileToCheck = mobile.isNotEmpty ? mobile : authMobile;
+      if (mobileToCheck.isNotEmpty) {
+        _checkForPendingInvite(mobileToCheck);
+      }
+    }
+  }
+
+  void _applyInviteData(Map<String, dynamic> data) {
+    final orgId   = data['orgId']   as String?;
+    final orgName = data['orgName'] as String?;
+    if (orgId == null) return;
+    _inviteOrgId   = orgId;
+    _inviteOrgName = orgName;
+    if (orgName != null && _companyCtrl.text.isEmpty) {
+      _companyCtrl.text = orgName;
+    }
+    // Defer provider mutation — initState runs during the build phase and
+    // Riverpod forbids modifying providers until the tree is done building.
+    Future.microtask(() {
+      if (mounted) ref.read(currentOrgIdProvider.notifier).state = orgId;
+    });
+  }
+
+  Future<void> _checkForPendingInvite(String mobile) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(AppConstants.orgInvitesCollection)
+          .where('mobile', isEqualTo: mobile)
+          .where('status', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return;
+      final data = snap.docs.first.data();
+      final orgId   = data['orgId']   as String?;
+      final orgName = data['orgName'] as String?;
+      if (orgId != null && mounted) {
+        ref.read(currentOrgIdProvider.notifier).state = orgId;
+        setState(() {
+          _inviteOrgId   = orgId;
+          _inviteOrgName = orgName;
+          if (orgName != null && _companyCtrl.text.isEmpty) {
+            _companyCtrl.text = orgName;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -53,10 +126,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     _nameCtrl.dispose();
     _mobileCtrl.dispose();
     _reraCtrl.dispose();
+    _companyCtrl.dispose();
     super.dispose();
   }
-
-  // ── Validation ────────────────────────────────────────────────────────────
 
   String? _validateName(String? v) {
     final l = AppLocalizations.of(context);
@@ -77,8 +149,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     return null;
   }
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-
   Future<void> _pickCity() async {
     final city = await showModalBottomSheet<String>(
       context: context,
@@ -89,52 +159,63 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (city != null) setState(() => _selectedCity = city);
   }
 
-  String? _validateRole() {
-    final l = AppLocalizations.of(context);
-    return _selectedRole == null ? l.selectRole : null;
-  }
-
-  Future<void> _submit() async {
+  Future<void> _submit({required bool isInvited}) async {
     setState(() => _submitted = true);
-    if (!_formKey.currentState!.validate() ||
-        _validateCity() != null ||
-        _validateRole() != null) {
-      return;
-    }
+    final bool cityOk = _validateCity() == null;
+    if (!_formKey.currentState!.validate() || !cityOk) return;
+
+    final company  = _companyCtrl.text.trim();
 
     await ref.read(profileSetupProvider.notifier).saveProfile(
           name: _nameCtrl.text.trim(),
           mobile: _mobileCtrl.text.trim(),
           city: _selectedCity!,
-          role: _selectedRole!,
+          workingAreas: _workingAreas,
+          role: null,
           reraNumber: _reraCtrl.text.trim().isEmpty ? null : _reraCtrl.text.trim(),
           photoFile: _photoFile,
+          accountType: 'individual',
+          companyName: company.isEmpty ? null : company,
+          // Invited users join a broker team — mark them as sellers with
+          // onboarding complete so they land straight in the CRM.
+          userPersona: isInvited ? 'seller' : null,
+          hasCompletedOnboarding: isInvited,
         );
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = ref.watch(authStateChangesProvider).valueOrNull;
+    final isDark    = Theme.of(context).brightness == Brightness.dark;
+    final user      = ref.watch(authStateChangesProvider).valueOrNull;
+    final l         = AppLocalizations.of(context);
+    final orgId     = ref.watch(currentOrgIdProvider);
+    final isInvited = orgId != null || _inviteOrgId != null;
+    final orgName   = _inviteOrgName
+        ?? (isInvited ? ref.watch(watchCurrentOrgProvider).valueOrNull?.orgName : null);
 
-    // Listen for save result → navigate or show error
     ref.listen<ProfileSetupState>(profileSetupProvider, (_, next) {
       switch (next) {
         case ProfileSetupSuccess():
           ref.read(profileCompleteOverrideProvider.notifier).state = true;
-          showGeneralDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            barrierColor: Colors.transparent,
-            pageBuilder: (ctx, _, __) => AppGuide(
-              onDone: () {
-                Navigator.of(ctx).pop();
-                context.go(Routes.feed);
-              },
-            ),
-          );
+          if (isInvited) {
+            final uid = ref.read(authStateChangesProvider).valueOrNull?.uid ?? '';
+            if (uid.isNotEmpty) {
+              ref.read(orgActionsProvider.notifier).acceptInviteByMobile(
+                mobile: _mobileCtrl.text.trim(),
+                brokerUid: uid,
+                brokerName: _nameCtrl.text.trim(),
+              );
+            }
+            // Team admin already configured the CRM — skip the onboarding
+            // welcome screen and land the invited user directly in CRM.
+            ref.read(onboardingCompleteOverrideProvider.notifier).state = true;
+            context.go(Routes.crm);
+          } else {
+            // Router redirect handles onboarding routing:
+            //   sellers  → /onboarding/seller
+            //   buyers   → /onboarding/buyer
+            context.go(Routes.feed);
+          }
         case ProfileSetupError(:final message):
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -149,17 +230,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       }
     });
 
-    final l = AppLocalizations.of(context);
     final setupState = ref.watch(profileSetupProvider);
-    final isSaving = setupState is ProfileSetupSaving;
-    final cityError = _submitted ? _validateCity() : null;
+    final isSaving   = setupState is ProfileSetupSaving;
+    final cityError  = _submitted ? _validateCity() : null;
+    final isSeller   = user?.isSeller ?? false;
 
     return LoadingOverlay(
       isLoading: isSaving,
       message: l.savingProfile,
       child: Scaffold(
-        backgroundColor:
-            isDark ? AppColors.navyDark : AppColors.offWhite,
+        backgroundColor: isDark ? AppColors.navyDark : AppColors.offWhite,
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -170,79 +250,120 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 children: [
                   const SizedBox(height: 12),
 
-                  // ── Header ──────────────────────────────────────────────
-                  Text(
-                    l.setupProfileTitle,
-                    style: AppTypography.headlineMedium.copyWith(
-                      color: isDark ? AppColors.white : AppColors.navyDark,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l.setupProfileSubtitle,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // ── Role selection ───────────────────────────────────────
-                  Row(
-                    children: [
-                      Text(
-                        l.iAmA,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: isDark
-                              ? AppColors.textOnDarkSecondary
-                              : AppColors.textSecondary,
+                  // ── Header ──────────────────────────────────────────────────
+                  if (isInvited) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.navyDark, AppColors.navyMid],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(width: 3),
-                      const Text(
-                        '*',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.7,
-                    children: UserRole.values
-                        .map((role) => _RoleCard(
-                              role: role,
-                              isSelected: _selectedRole == role,
-                              isDark: isDark,
-                              onTap: () =>
-                                  setState(() => _selectedRole = role),
-                            ),)
-                        .toList(),
-                  ),
-                  if (_submitted && _validateRole() != null) ...[
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        _validateRole()!,
-                        style: AppTypography.labelSmall
-                            .copyWith(color: AppColors.error),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.gold.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.domain_rounded,
+                                  color: AppColors.gold,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  orgName ?? 'Your Organisation',
+                                  style: AppTypography.titleSmall.copyWith(
+                                    color: AppColors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'You\'ve been invited to join ${orgName ?? 'the organisation'}.',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Complete your profile to start collaborating with your team.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.white.withValues(alpha: 0.75),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => FirebaseAuth.instance.signOut(),
+                          icon: const Icon(Icons.logout, size: 16),
+                          label: const Text('Sign Out'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.setupProfileTitle,
+                                style: AppTypography.headlineMedium.copyWith(
+                                  color: isDark ? AppColors.white : AppColors.navyDark,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                l.setupProfileSubtitle,
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => FirebaseAuth.instance.signOut(),
+                          icon: const Icon(Icons.logout, size: 16),
+                          label: const Text('Sign Out'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
                   ],
 
-                  const SizedBox(height: 28),
-
-                  // ── Profile photo ────────────────────────────────────────
+                  // ── Profile photo ─────────────────────────────────────────
                   Center(
                     child: Column(
                       children: [
@@ -254,9 +375,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                         const SizedBox(height: 8),
                         Text(
                           l.tapToAddPhoto,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: AppTypography.labelSmall
+                              .copyWith(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -264,7 +384,37 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                   const SizedBox(height: 32),
 
-                  // ── Full name ────────────────────────────────────────────
+                  // ── Seller persona badge ──────────────────────────────────
+                  if (isSeller) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10,),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.storefront_outlined,
+                              color: AppColors.gold, size: 18,),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Setting up your seller profile',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: AppColors.gold,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // ── Full name ─────────────────────────────────────────────
                   _FieldLabel(l.fullName, required: true),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -278,9 +428,26 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     ),
                   ),
 
+                  // ── Company name (sellers only) ───────────────────────────
+                  if (isSeller) ...[
+                    const SizedBox(height: 20),
+                    const _FieldLabel('Company / Agency Name', required: false),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _companyCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        hintText: 'e.g. Sharma Realty (optional)',
+                        prefixIcon:
+                            Icon(Icons.business_outlined, size: 20),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 20),
 
-                  // ── Mobile ───────────────────────────────────────────────
+                  // ── Mobile ────────────────────────────────────────────────
                   _FieldLabel(l.mobileNumber, required: true),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -289,18 +456,22 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
                     maxLength: 10,
+                    readOnly: _mobileVerified,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '9876543210',
                       prefixText: '+91  ',
-                      prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                      prefixIcon: const Icon(Icons.phone_outlined, size: 20),
                       counterText: '',
+                      suffixIcon: _mobileVerified
+                          ? const Icon(Icons.verified, color: Colors.green, size: 20)
+                          : null,
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // ── City ─────────────────────────────────────────────────
+                  // ── City ──────────────────────────────────────────────────
                   _FieldLabel(l.city, required: true),
                   const SizedBox(height: 6),
                   GestureDetector(
@@ -325,11 +496,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.location_city_outlined,
-                            size: 20,
-                            color: AppColors.textSecondary,
-                          ),
+                          const Icon(Icons.location_city_outlined,
+                              size: 20, color: AppColors.textSecondary,),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -355,40 +523,54 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       padding: const EdgeInsets.only(left: 4),
                       child: Text(
                         cityError,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.error,
-                        ),
+                        style: AppTypography.labelSmall
+                            .copyWith(color: AppColors.error),
                       ),
                     ),
                   ],
 
+                  // ── Preferred Working Areas ───────────────────────────────
                   const SizedBox(height: 20),
+                  const _FieldLabel('Preferred Working Areas', required: false),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add localities or neighbourhoods you operate in',
+                    style: AppTypography.labelSmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  LocalityMultiPicker(
+                    selected: _workingAreas,
+                    city: _selectedCity ?? '',
+                    onChanged: (v) => setState(() => _workingAreas = v),
+                  ),
 
-                  // ── RERA (optional) ──────────────────────────────────────
+                  // ── RERA (optional) ───────────────────────────────────────
+                  const SizedBox(height: 20),
                   _FieldLabel(l.reraNumber, required: false),
                   const SizedBox(height: 6),
                   AppTextField(
                     controller: _reraCtrl,
                     hint: 'e.g. MH/RERA/A12345 (optional)',
-                    prefixIcon: const Icon(
-                        Icons.verified_user_outlined, size: 20,),
+                    prefixIcon:
+                        const Icon(Icons.verified_user_outlined, size: 20),
                     textInputAction: TextInputAction.done,
                     textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     l.reraHint,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: AppTypography.bodySmall
+                        .copyWith(color: AppColors.textSecondary),
                   ),
 
                   const SizedBox(height: 40),
 
-                  // ── Save button ──────────────────────────────────────────
+                  // ── Save button ───────────────────────────────────────────
                   AppButton(
-                    label: l.saveAndContinue,
-                    onPressed: isSaving ? null : _submit,
+                    label: isInvited ? 'Join Organisation' : l.saveAndContinue,
+                    onPressed:
+                        isSaving ? null : () => _submit(isInvited: isInvited),
                     isLoading: isSaving,
                     suffixIcon: isSaving
                         ? null
@@ -407,83 +589,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 }
 
-// ── Role selection card ────────────────────────────────────────────────────
-
-class _RoleCard extends StatelessWidget {
-  const _RoleCard({
-    required this.role,
-    required this.isSelected,
-    required this.isDark,
-    required this.onTap,
-  });
-
-  final UserRole role;
-  final bool isSelected;
-  final bool isDark;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.gold
-              : (isDark ? AppColors.surfaceDark : AppColors.white),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.gold
-                : (isDark ? AppColors.borderDark : AppColors.border),
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.gold.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(role.emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-              role.label,
-              style: AppTypography.labelMedium.copyWith(
-                color: isSelected
-                    ? AppColors.navyDark
-                    : (isDark ? AppColors.white : AppColors.textPrimary),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              role.description,
-              style: AppTypography.labelSmall.copyWith(
-                color: isSelected
-                    ? AppColors.navyDark.withValues(alpha: 0.7)
-                    : AppColors.textSecondary,
-                fontSize: 10,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Reusable field label ────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.label, {required this.required});
@@ -505,11 +611,14 @@ class _FieldLabel extends StatelessWidget {
         ),
         if (required) ...[
           const SizedBox(width: 3),
-          const Text('*',
-              style: TextStyle(
-                  color: AppColors.error,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,),),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: AppColors.error,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ],
     );
