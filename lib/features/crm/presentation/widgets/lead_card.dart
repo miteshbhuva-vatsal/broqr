@@ -8,6 +8,7 @@ import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/crm/domain/entities/lead.dart';
 import 'package:cpapp/features/crm/domain/utils/lead_score.dart';
+import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
 import 'package:cpapp/features/feed/presentation/providers/feed_providers.dart';
 import 'package:cpapp/features/organisation/presentation/providers/org_providers.dart';
 import 'package:cpapp/shared/widgets/whatsapp_logo.dart';
@@ -76,12 +77,14 @@ class LeadCard extends ConsumerWidget {
             .firstOrNull
         : null;
 
-    // Resolve team/member names only in org mode
+    // Resolve team/member names + manager name
     String? teamName;
     String? assigneeName;
+    final members = lead.orgId != null
+        ? (ref.watch(watchOrgMembersProvider).valueOrNull ?? [])
+        : <dynamic>[];
     if (lead.orgId != null) {
       final teams = ref.watch(watchOrgTeamsProvider).valueOrNull ?? [];
-      final members = ref.watch(watchOrgMembersProvider).valueOrNull ?? [];
       if (lead.teamId != null) {
         teamName = teams
             .where((t) => t.id == lead.teamId)
@@ -92,9 +95,13 @@ class LeadCard extends ConsumerWidget {
         assigneeName = members
             .where((m) => m.id == lead.assignedTo)
             .firstOrNull
-            ?.brokerName;
+            ?.brokerName as String?;
       }
     }
+    // Manager = assignee if set, else the person who owns the lead (self)
+    final selfName = ref.watch(currentOrgMemberProvider).valueOrNull?.brokerName
+        ?? ref.watch(authStateChangesProvider).valueOrNull?.name;
+    final managerName = assigneeName ?? selfName;
 
     return GestureDetector(
       onTap: onTap,
@@ -321,17 +328,17 @@ class LeadCard extends ConsumerWidget {
                         ),
 
                         // ── Assignment chip ────────────────────────────────
-                        if (teamName != null || assigneeName != null) ...[
+                        if (teamName != null || managerName != null) ...[
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              Icon(
-                                Icons.groups_2_outlined,
-                                size: 11,
-                                color: AppColors.navyMid.withValues(alpha: 0.7),
-                              ),
-                              const SizedBox(width: 4),
-                              if (teamName != null)
+                              if (teamName != null) ...[
+                                Icon(
+                                  Icons.groups_2_outlined,
+                                  size: 11,
+                                  color: AppColors.navyMid.withValues(alpha: 0.7),
+                                ),
+                                const SizedBox(width: 4),
                                 Text(
                                   teamName,
                                   style: AppTypography.labelSmall.copyWith(
@@ -340,27 +347,30 @@ class LeadCard extends ConsumerWidget {
                                     fontSize: 10,
                                   ),
                                 ),
-                              if (teamName != null && assigneeName != null)
-                                Text(
-                                  ' · ',
-                                  style: AppTypography.labelSmall.copyWith(
-                                    color: AppColors.textHint,
-                                    fontSize: 10,
+                                if (managerName != null)
+                                  Text(
+                                    ' · ',
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: AppColors.textHint,
+                                      fontSize: 10,
+                                    ),
                                   ),
-                                ),
-                              if (assigneeName != null) ...[
+                              ],
+                              if (managerName != null) ...[
                                 Icon(
-                                  Icons.person_outline,
+                                  assigneeName != null
+                                      ? Icons.person_outline
+                                      : Icons.manage_accounts_outlined,
                                   size: 11,
-                                  color:
-                                      AppColors.navyMid.withValues(alpha: 0.6),
+                                  color: AppColors.navyMid.withValues(alpha: 0.6),
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  assigneeName,
+                                  assigneeName != null
+                                      ? managerName
+                                      : 'By $managerName',
                                   style: AppTypography.labelSmall.copyWith(
-                                    color: AppColors.navyMid
-                                        .withValues(alpha: 0.85),
+                                    color: AppColors.navyMid.withValues(alpha: 0.85),
                                     fontWeight: FontWeight.w500,
                                     fontSize: 10,
                                   ),

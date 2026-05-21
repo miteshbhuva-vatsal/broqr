@@ -1,8 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:share_plus/share_plus.dart';
+import 'package:cpapp/core/constants/route_constants.dart';
 import 'package:cpapp/core/l10n/app_localizations.dart';
+import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/ask/domain/entities/ask_post.dart';
@@ -89,6 +93,16 @@ class AskPostCard extends ConsumerWidget {
     );
     final isMine = post.authorUid == myUid;
 
+    void openAuthorProfile() {
+      if (isMine) {
+        context.push(Routes.profile);
+      } else {
+        context.push(
+          Routes.realtorProfile.replaceFirst(':realtorId', post.authorUid),
+        );
+      }
+    }
+
     final bgStart =
         post.hasBackground ? _startColor(post.backgroundColorHex) : null;
     final textOnBg = bgStart != null
@@ -114,31 +128,37 @@ class AskPostCard extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
             child: Row(
               children: [
-                _Avatar(
-                  name: post.authorName,
-                  photoUrl: post.authorPhotoUrl,
+                GestureDetector(
+                  onTap: openAuthorProfile,
+                  child: _Avatar(
+                    name: post.authorName,
+                    photoUrl: post.authorPhotoUrl,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.authorName.isEmpty ? 'Broker' : post.authorName,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: isDark
-                              ? AppColors.white
-                              : AppColors.navyDark,
-                          fontWeight: FontWeight.w700,
+                  child: GestureDetector(
+                    onTap: openAuthorProfile,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post.authorName.isEmpty ? 'Broker' : post.authorName,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: isDark
+                                ? AppColors.white
+                                : AppColors.navyDark,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _ago(post.createdAt),
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.textSecondary,
+                        Text(
+                          _ago(post.createdAt),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 if (isMine)
@@ -249,12 +269,27 @@ class AskPostCard extends ConsumerWidget {
                   label: '${post.commentsCount}',
                   onTap: () => _openComments(context),
                 ),
+                _ActionButton(
+                  icon: Icons.share_outlined,
+                  iconColor: AppColors.textSecondary,
+                  label: '',
+                  onTap: () => _sharePost(context),
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _sharePost(BuildContext context) {
+    final text = DeepLinkService.postShareText(
+      authorName: post.authorName,
+      bodyPreview: post.text,
+      postId: post.id,
+    );
+    Share.share(text, subject: '${post.authorName} on DigiProp');
   }
 
   void _openComments(BuildContext context) {

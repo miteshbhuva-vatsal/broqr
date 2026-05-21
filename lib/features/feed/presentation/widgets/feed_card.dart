@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
@@ -10,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cpapp/core/constants/route_constants.dart';
+import 'package:cpapp/core/services/deep_link_service.dart';
 import 'package:cpapp/core/theme/app_colors.dart';
 import 'package:cpapp/core/theme/app_typography.dart';
 import 'package:cpapp/features/auth/presentation/providers/auth_providers.dart';
@@ -33,21 +33,13 @@ class FeedCard extends ConsumerStatefulWidget {
 }
 
 class _FeedCardState extends ConsumerState<FeedCard> {
-  Timer? _viewTimer;
-
   @override
   void initState() {
     super.initState();
-    // Only count a view after the card has been visible for 1.5 s.
-    // Cards scrolled past quickly are never counted — cuts write volume ~70%.
-    _viewTimer = Timer(const Duration(milliseconds: 1500), () {
-      ref.read(feedProvider.notifier).trackView(widget.listing);
-    });
   }
 
   @override
   void dispose() {
-    _viewTimer?.cancel();
     super.dispose();
   }
 
@@ -65,9 +57,28 @@ class _FeedCardState extends ConsumerState<FeedCard> {
   }
 
   void _goToDetail() {
+    ref.read(feedProvider.notifier).trackView(widget.listing);
     context.push(
       Routes.listingDetail.replaceFirst(':listingId', widget.listing.id),
     );
+  }
+
+  Future<void> _shareListing() async {
+    final l = widget.listing;
+    final user = ref.read(authStateChangesProvider).valueOrNull;
+    final refCode = user?.effectiveReferralCode ?? l.brokerUid.substring(0, 8).toUpperCase();
+    final text = DeepLinkService.listingShareText(
+      emoji: l.category.emoji,
+      category: l.category.label,
+      location: l.location,
+      city: l.city,
+      price: l.priceLabel,
+      area: l.area > 0 ? '${l.area.toStringAsFixed(0)} sq ft' : '',
+      brokerName: l.brokerName,
+      listingId: l.id,
+      referralCode: refCode,
+    );
+    await Share.share(text, subject: '${l.category.label} on DigiProp');
   }
 
   void _showOwnerMenu(Listing listing) {
@@ -151,9 +162,12 @@ class _FeedCardState extends ConsumerState<FeedCard> {
     );
 
     return GestureDetector(
-      onTap: () => context.push(
-        Routes.listingDetail.replaceFirst(':listingId', listing.id),
-      ),
+      onTap: () {
+        ref.read(feedProvider.notifier).trackView(listing);
+        context.push(
+          Routes.listingDetail.replaceFirst(':listingId', listing.id),
+        );
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -182,6 +196,7 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                       imageUrl: listing.heroImageUrl,
                       fit: BoxFit.cover,
                       memCacheWidth: 800,
+                      memCacheHeight: 600,
                       fadeInDuration: const Duration(milliseconds: 180),
                       fadeOutDuration: Duration.zero,
                       placeholder: (_, __) => Container(
@@ -269,6 +284,7 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                               onTap: () => ref
                                   .read(feedProvider.notifier)
                                   .toggleLike(listing),
+                              behavior: HitTestBehavior.opaque,
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -533,12 +549,11 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                             children: [
                               if (listing.posterRole != null) ...[
                                 Flexible(
-                                  fit: FlexFit.loose,
                                   child: _RoleBadge(role: listing.posterRole!),
                                 ),
                                 const SizedBox(width: 4),
                               ],
-                              Flexible(
+                              Expanded(
                                 child: Text(
                                   _timeAgo(listing.createdAt),
                                   style: AppTypography.labelSmall.copyWith(
@@ -554,15 +569,30 @@ class _FeedCardState extends ConsumerState<FeedCard> {
                       ),
                     ),
                   ),
+                  GestureDetector(
+                    onTap: _shareListing,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Icon(
+                        Icons.share_outlined,
+                        size: 18,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                   if (!isBuyer) _LeadsBadge(listing: listing),
                   if (!isMyPost) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: _goToDetail,
+                      behavior: HitTestBehavior.opaque,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
+                          horizontal: 11,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           gradient: isInquired ? null : AppColors.goldGradient,
@@ -724,7 +754,7 @@ class _LeadsBadge extends ConsumerWidget {
         builder: (_) => ListingLeadsSheet(listing: listing),
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
           color: color.withValues(alpha: hasLeads ? 0.15 : 0.08),
           borderRadius: BorderRadius.circular(20),

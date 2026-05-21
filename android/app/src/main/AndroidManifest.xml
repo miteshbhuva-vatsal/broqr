@@ -59,7 +59,25 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cpapp" />
             </intent-filter>
-            <!-- App Links: https://www.digiprop.in/listing/{id} and /broker/{id} -->
+            <!-- App Links: https://www.digiprop.co.in — listing, broker, post -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="www.digiprop.co.in"
+                    android:pathPrefix="/listing" />
+                <data
+                    android:scheme="https"
+                    android:host="www.digiprop.co.in"
+                    android:pathPrefix="/broker" />
+                <data
+                    android:scheme="https"
+                    android:host="www.digiprop.co.in"
+                    android:pathPrefix="/post" />
+            </intent-filter>
+            <!-- Legacy App Links: www.digiprop.in (backward compat for old shared links) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+
 /// App-wide string constants, limits, and config values.
 abstract final class AppConstants {
   // ── App meta ──────────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ abstract final class AppConstants {
 
   // ── Deep links ────────────────────────────────────────────────────────────
   static const int maxReferralCodeLength = 32;
-  static const String webDomain = 'www.digiprop.in';
+  static const String webDomain = 'www.digiprop.co.in';
 
   // ── Search ────────────────────────────────────────────────────────────────
   static const Duration searchDebounceDelay = Duration(milliseconds: 300);
@@ -69,8 +71,12 @@ abstract final class AppConstants {
   static const String shareTextTemplate =
       '🏠 Check out this property deal on DigiProp!\n\n'
       '{title}\n{location}\n₹{price}\n\n'
-      'Download DigiProp: https://digiprop.in';
+      'Download DigiProp: https://www.digiprop.co.in';
 
   // ── Backend API (Next.js admin panel) ────────────────────────────────────
-  static const String apiBaseUrl = 'https://cpapp-admin-ouzg8.ondigitalocean.app';
+  // Web debug builds hit the locally-running admin so CORS + TEST_OTP_BYPASS
+  // work without redeploying. Mobile and release web hit production.
+  static String get apiBaseUrl => (kIsWeb && kDebugMode)
+      ? 'http://localhost:3001'
+      : 'https://cpapp-admin-ouzg8.ondigitalocean.app';
 }

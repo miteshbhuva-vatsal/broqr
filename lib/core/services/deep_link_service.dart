@@ -10,7 +10,7 @@ import 'package:flutter/foundation.dart';
 // ── Stream provider — surfaces every incoming deep-link URI ───────────────────
 
 /// Emits every URI received via cpapp:// (custom scheme) or
-/// https://www.digiprop.in (App Links / Universal Links).
+/// https://www.digiprop.co.in (App Links / Universal Links).
 /// The initial link (app cold-started from a link) is emitted first.
 final deepLinkUriProvider = StreamProvider<Uri>((ref) async* {
   final appLinks = AppLinks();
@@ -37,10 +37,13 @@ abstract final class DeepLinkService {
 
   // ── Handle ──────────────────────────────────────────────────────────────
 
+  // Both old and new domains are accepted so previously shared links keep working.
+  static const _legacyDomain = 'www.digiprop.in';
+
   /// Call this from the root widget whenever [deepLinkUriProvider] emits.
   /// Handles both:
-  ///   cpapp://listing/{id}?ref={code}           — custom scheme (legacy)
-  ///   https://www.digiprop.in/listing/{id}?ref={code} — App/Universal Links
+  ///   cpapp://listing/{id}?ref={code}               — custom scheme (legacy)
+  ///   https://www.digiprop.co.in/listing/{id}?ref={code} — App/Universal Links
   static void handle(Uri uri, WidgetRef ref) {
     if (kDebugMode) debugPrint('[DeepLink] incoming: $uri');
 
@@ -53,9 +56,9 @@ abstract final class DeepLinkService {
       resource = uri.host;
       resourceId = uri.pathSegments.firstOrNull;
     } else if ((uri.scheme == 'https' || uri.scheme == 'http') &&
-        uri.host == AppConstants.webDomain &&
+        (uri.host == AppConstants.webDomain || uri.host == _legacyDomain) &&
         uri.pathSegments.length >= 2) {
-      // https://www.digiprop.in/listing/{id}  →  path[0] = resource, path[1] = id
+      // https://www.digiprop.co.in/listing/{id}  →  path[0] = resource, path[1] = id
       resource = uri.pathSegments[0];
       resourceId = uri.pathSegments[1];
     } else {
@@ -91,6 +94,10 @@ abstract final class DeepLinkService {
             Routes.realtorProfile.replaceFirst(':realtorId', resourceId!),
           );
         }
+
+      case 'post':
+        // No dedicated post detail screen — open the Ask tab.
+        router.go(Routes.ask);
     }
   }
 
@@ -111,6 +118,13 @@ abstract final class DeepLinkService {
         host: AppConstants.webDomain,
         pathSegments: ['broker', brokerId],
         queryParameters: {'ref': referralCode},
+      );
+
+  /// Shareable HTTPS link for an Ask community post.
+  static Uri postUri(String postId) => Uri(
+        scheme: 'https',
+        host: AppConstants.webDomain,
+        pathSegments: ['post', postId],
       );
 
   // ── Share text builders ───────────────────────────────────────────────────
@@ -146,6 +160,23 @@ abstract final class DeepLinkService {
     final link = brokerUri(brokerId, referralCode);
     final cityPart = city != null ? ' · $city' : '';
     return '👤 Connect with $brokerName$cityPart on DigiProp!\n'
+        '\n'
+        '🔗 $link\n'
+        '\n'
+        '📲 Download DigiProp: https://${AppConstants.webDomain}';
+  }
+
+  static String postShareText({
+    required String authorName,
+    required String bodyPreview,
+    required String postId,
+  }) {
+    final link = postUri(postId);
+    final preview = bodyPreview.length > 80
+        ? '${bodyPreview.substring(0, 80)}…'
+        : bodyPreview;
+    return '💬 $authorName on DigiProp:\n'
+        '"$preview"\n'
         '\n'
         '🔗 $link\n'
         '\n'
