@@ -1,0 +1,18 @@
+Options -Indexes
+RewriteEngine On
+
+# Serve real files and directories as-is
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route /listing/{id} → listing/index.html
+RewriteRule ^listing/([^/]+)/?$ /listing/index.html [L,QSA]
+
+# Route /broker/{id} → broker/index.html
+RewriteRule ^broker/([^/]+)/?$ /broker/index.html [L,QSA]
+
+# Route /post/{id} → post/index.html
+RewriteRule ^post/([^/]+)/?$ /post/index.html [L,QSA]
+
+# Serve .well-known directly
+RewriteRule ^\.well-known/(.*)$ /.well-known/$1 [L]

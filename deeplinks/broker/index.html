@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Broker – DigiProp</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;color:#111}
+    .bar{background:#0A1628;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+    .bar-logo{display:flex;align-items:center;gap:8px}
+    .bar-icon{width:28px;height:28px;background:#F59E0B;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#0A1628}
+    .bar-name{color:#fff;font-size:14px;font-weight:600}
+    .bar-tag{color:rgba(255,255,255,.45);font-size:11px}
+    .profile-card{background:#fff;border-bottom:1px solid #e5e7eb;padding:24px 16px}
+    .profile-row{display:flex;align-items:center;gap:14px}
+    .avatar{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #F59E0B;flex-shrink:0}
+    .avatar-placeholder{width:72px;height:72px;border-radius:50%;background:#0A1628;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#F59E0B;flex-shrink:0}
+    .profile-info{flex:1;min-width:0}
+    .profile-name-row{display:flex;align-items:center;gap:6px}
+    .profile-name{font-size:20px;font-weight:700;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rera{font-size:11px;color:#9ca3af;margin-top:2px}
+    .meta-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280;margin-top:4px}
+    .verified{color:#3b82f6}
+    .listings-count{text-align:right;flex-shrink:0}
+    .listings-count .num{font-size:26px;font-weight:900;color:#0A1628}
+    .listings-count .label{font-size:11px;color:#9ca3af}
+    .cta{padding:16px;display:flex;flex-direction:column;gap:12px}
+    .open-btn{width:100%;background:#0A1628;color:#F59E0B;font-size:14px;font-weight:700;padding:16px;border:none;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:opacity .15s}
+    .open-btn:active{opacity:.8}
+    .dl-link{text-align:center;font-size:12px;color:#9ca3af}
+    .dl-link a{color:#d97706;font-weight:500;text-decoration:underline}
+    .section-label{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding:0 16px}
+    .listings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px}
+    @media(min-width:480px){.listings-grid{grid-template-columns:1fr 1fr 1fr}}
+    .listing-tile{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb}
+    .tile-img{position:relative;height:100px;background:#e5e7eb;overflow:hidden}
+    .tile-img img{width:100%;height:100%;object-fit:cover}
+    .tile-badge{position:absolute;bottom:6px;left:6px;background:#F59E0B;color:#0A1628;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
+    .tile-body{padding:8px 10px}
+    .tile-price{font-size:13px;font-weight:700;color:#0A1628}
+    .tile-loc{font-size:10px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .footer{text-align:center;padding:16px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;background:#fff}
+    .spinner{width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#F59E0B;border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .error-box{padding:40px 16px;text-align:center;color:#6b7280}
+  </style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-logo">
+    <div class="bar-icon">DP</div>
+    <span class="bar-name">DigiProp</span>
+  </div>
+  <span class="bar-tag">Broker Profile</span>
+</div>
+
+<div id="root"><div class="spinner"></div></div>
+
+<script>
+const FIREBASE_API_KEY = 'AIzaSyCs1uz_dfod3gh0I9m2hpUVcxUhOIBV6XQ';
+const PROJECT_ID       = 'cpapp-ace05';
+const BASE_URL         = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const brokerId = pathParts[1] || pathParts[0];
+
+function fv(field) {
+  if (!field) return null;
+  return field.stringValue ?? field.integerValue ?? field.doubleValue ?? field.booleanValue ?? null;
+}
+function fa(field) {
+  return field?.arrayValue?.values?.map(v => fv(v)).filter(Boolean) ?? [];
+}
+function formatPrice(p) {
+  if (!p) return '—';
+  if (p >= 10000000) return '₹' + (p / 10000000).toFixed(2) + ' Cr';
+  if (p >= 100000)   return '₹' + (p / 100000).toFixed(2) + ' L';
+  return '₹' + Number(p).toLocaleString('en-IN');
+}
+
+async function load() {
+  if (!brokerId) { renderError('Invalid broker link.'); return; }
+  try {
+    // Fetch user doc
+    const userRes = await fetch(`${BASE_URL}/users/${brokerId}?key=${FIREBASE_API_KEY}`);
+    if (!userRes.ok) { renderError('Broker not found.'); return; }
+    const userDoc = await userRes.json();
+    const f = userDoc.fields || {};
+    const user = {
+      name:       fv(f.name)       || 'Broker',
+      photoUrl:   fv(f.photoUrl)   || '',
+      city:       fv(f.city)       || '',
+      mobile:     fv(f.mobile)     || '',
+      reraNumber: fv(f.reraNumber) || '',
+      isVerified: !!fv(f.isVerified),
+    };
+
+    // Fetch active listings (structured query via REST)
+    const qRes = await fetch(`${BASE_URL}:runQuery?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'listings' }],
+          where: {
+            compositeFilter: {
+              op: 'AND',
+              filters: [
+                { fieldFilter: { field: { fieldPath: 'brokerUid' }, op: 'EQUAL', value: { stringValue: brokerId } } },
+                { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'active' } } },
+              ]
+            }
+          },
+          orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+          limit: 6,
+        }
+      })
+    });
+    const qData = await qRes.json();
+    const listings = (qData || [])
+      .filter(r => r.document)
+      .map(r => {
+        const lf = r.document.fields || {};
+        const nameParts = r.document.name.split('/');
+        return {
+          id:          nameParts[nameParts.length - 1],
+          category:    fv(lf.category)     || '',
+          price:       Number(fv(lf.price) || 0),
+          location:    fv(lf.location)     || '',
+          city:        fv(lf.city)         || '',
+          heroImageUrl:fv(lf.heroImageUrl) || '',
+        };
+      });
+
+    render(user, listings);
+  } catch(e) {
+    renderError('Could not load broker profile.');
+  }
+}
+
+function render(user, listings) {
+  const deepLink = `cpapp://broker/${brokerId}`;
+  document.title = `${user.name} – DigiProp`;
+
+  const listingsHtml = listings.length ? `
+    <div class="section-label">Active Listings</div>
+    <div class="listings-grid">
+      ${listings.map(l => `
+        <div class="listing-tile">
+          ${l.heroImageUrl ? `<div class="tile-img"><img src="${l.heroImageUrl}" alt="" /><span class="tile-badge">${l.category}</span></div>` : ''}
+          <div class="tile-body">
+            <div class="tile-price">${formatPrice(l.price)}</div>
+            <div class="tile-loc">${l.location}${l.city ? ', '+l.city : ''}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  document.getElementById('root').innerHTML = `
+    <div class="profile-card">
+      <div class="profile-row">
+        ${user.photoUrl
+          ? `<img class="avatar" src="${user.photoUrl}" alt="${user.name}" onerror="this.outerHTML='<div class=&quot;avatar-placeholder&quot;>${user.name[0]?.toUpperCase()}</div>'" />`
+          : `<div class="avatar-placeholder">${user.name[0]?.toUpperCase() || 'B'}</div>`}
+        <div class="profile-info">
+          <div class="profile-name-row">
+            <span class="profile-name">${user.name}</span>
+            ${user.isVerified ? `<svg class="verified" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` : ''}
+          </div>
+          ${user.reraNumber ? `<div class="rera">RERA: ${user.reraNumber}</div>` : ''}
+          <div class="meta-row">
+            ${user.city ? `<span>${user.city}</span>` : ''}
+            ${user.mobile ? `<a href="tel:${user.mobile}" style="color:#d97706;font-weight:500">${user.mobile}</a>` : ''}
+          </div>
+        </div>
+        <div class="listings-count">
+          <div class="num">${listings.length}</div>
+          <div class="label">Listings</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <button class="open-btn" onclick="openApp('${deepLink}')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+        Connect on DigiProp App
+      </button>
+      <p class="dl-link">Don't have the app? <a href="https://play.google.com/store/apps/details?id=com.digiprop.cpapp">Download DigiProp</a></p>
+    </div>
+
+    ${listingsHtml}
+
+    <div class="footer">Powered by <strong>DigiProp</strong></div>
+  `;
+}
+
+function renderError(msg) {
+  document.getElementById('root').innerHTML = `<div class="error-box"><p style="font-size:32px;margin-bottom:12px">👤</p><p>${msg}</p></div>`;
+}
+
+function openApp(deepLink) {
+  const btn = document.querySelector('.open-btn');
+  if (btn) btn.textContent = 'Opening…';
+  window.location.href = deepLink;
+  setTimeout(() => {
+    window.location.href = 'https://play.google.com/store/apps/details?id=com.digiprop.cpapp';
+  }, 2500);
+}
+
+load();
+</script>
+</body>
+</html>
